@@ -1,0 +1,10 @@
+---
+shellcheck:
+  extends: .job
+  stage: unit-tests
+  tags: [light]
+  variables:
+    SHELLCHECK_VERSION: v0.7.1
+  before_script:
+    - ./tests/scripts/rebase.sh
+    - curl --
