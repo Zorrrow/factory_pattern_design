@@ -240,4 +240,33 @@ You can choose among ten network plugins. (default: `calico`, except Vagrant use
 
 - [multus](docs/multus.md): Multus is a meta CNI plugin that provides multiple network interface support to pods. For each interface Multus delegates CNI calls to secondary CNI plugins such as Calico, macvlan, etc.
 
-The network plugin to use is defined by the variable `kube_n
+The network plugin to use is defined by the variable `kube_network_plugin`. There is also an
+option to leverage built-in cloud provider networking instead.
+See also [Network checker](docs/netcheck.md).
+
+## Ingress Plugins
+
+- [nginx](https://kubernetes.github.io/ingress-nginx): the NGINX Ingress Controller.
+
+- [metallb](docs/metallb.md): the MetalLB bare-metal service LoadBalancer provider.
+
+## Community docs and resources
+
+- [kubernetes.io/docs/setup/production-environment/tools/kubespray/](https://kubernetes.io/docs/setup/production-environment/tools/kubespray/)
+- [kubespray, monitoring and logging](https://github.com/gregbkr/kubernetes-kargo-logging-monitoring) by @gregbkr
+- [Deploy Kubernetes w/ Ansible & Terraform](https://rsmitty.github.io/Terraform-Ansible-Kubernetes/) by @rsmitty
+- [Deploy a Kubernetes Cluster with Kubespray (video)](https://www.youtube.com/watch?v=CJ5G4GpqDy0)
+
+## Tools and projects on top of Kubespray
+
+- [Digital Rebar Provision](https://github.com/digitalrebar/provision/blob/v4/doc/integrations/ansible.rst)
+- [Terraform Contrib](https://github.com/kubernetes-sigs/kubespray/tree/master/contrib/terraform)
+- [Kubean](https://github.com/kubean-io/kubean)
+
+## CI Tests
+
+[![Build graphs](https://gitlab.com/kargo-ci/kubernetes-sigs-kubespray/badges/master/pipeline.svg)](https://gitlab.com/kargo-ci/kubernetes-sigs-kubespray/pipelines)
+
+CI/end-to-end tests sponsored by: [CNCF](https://cncf.io), [Equinix Metal](https://metal.equinix.com/), [OVHcloud](https://www.ovhcloud.com/), [ELASTX](https://elastx.se/).
+
+See the [test matrix](docs/test_cases.md) for details.
