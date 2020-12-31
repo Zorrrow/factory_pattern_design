@@ -18,4 +18,13 @@
     },
     {
       "type": "Microsoft.Compute/availabilitySets",
-      "name": "{{availabilitySet
+      "name": "{{availabilitySetMinions}}",
+      "apiVersion": "{{apiVersion}}",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "PlatformFaultDomainCount": "{{faultDomainCount}}",
+        "PlatformUpdateDomainCount": "{{updateDomainCount}}"
+      }
+    }
+  ]
+}
