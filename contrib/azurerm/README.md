@@ -31,4 +31,37 @@ also removes all public IPs from all other VMs.
 To generate and apply the templates, call:
 
 ```shell
-./apply-rg.sh <resource_grou
+./apply-rg.sh <resource_group_name>
+```
+
+If you change something in the configuration (e.g. number of nodes) later, you can call this again and Azure will
+take care about creating/modifying whatever is needed.
+
+## Clearing a resource group
+
+If you need to delete all resources from a resource group, simply call:
+
+```shell
+./clear-rg.sh <resource_group_name>
+```
+
+**WARNING** this really deletes everything from your resource group, including everything that was later created by you!
+
+## Installing Ansible and the dependencies
+
+Install Ansible according to [Ansible installation guide](/docs/ansible.md#installing-ansible)
+
+## Generating an inventory for kubespray
+
+After you have applied the templates, you can generate an inventory with this call:
+
+```shell
+./generate-inventory.sh <resource_group_name>
+```
+
+It will create the file ./inventory which can then be used with kubespray, e.g.:
+
+```shell
+cd kubespray-root-dir
+ansible-playbook -i contrib/azurerm/inventory -u devops --become -e "@inventory/sample/group_vars/all/all.yml" cluster.yml
+```
