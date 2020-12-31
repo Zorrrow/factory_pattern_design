@@ -96,4 +96,193 @@ class KubesprayInventory(object):
                 self.parse_command(changed_hosts[0], changed_hosts[1:])
                 sys.exit(0)
 
-        # If the user wa
+        # If the user wants to remove a node, we need to load the config anyway
+        if changed_hosts and changed_hosts[0][0] == "-":
+            loadPreviousConfig = True
+
+        if self.config_file and loadPreviousConfig:  # Load previous YAML file
+            try:
+                self.hosts_file = open(config_file, 'r')
+                self.yaml_config = yaml.load(self.hosts_file)
+            except OSError as e:
+                # I am assuming we are catching "cannot open file" exceptions
+                print(e)
+                sys.exit(1)
+
+        if printHostnames:
+            self.print_hostnames()
+            sys.exit(0)
+
+        self.ensure_required_groups(ROLES)
+
+        if changed_hosts:
+            changed_hosts = self.range2ips(changed_hosts)
+            self.hosts = self.build_hostnames(changed_hosts,
+                                              loadPreviousConfig)
+            self.purge_invalid_hosts(self.hosts.keys(), PROTECTED_NAMES)
+            self.set_all(self.hosts)
+            self.set_k8s_cluster()
+            etcd_hosts_count = 3 if len(self.hosts.keys()) >= 3 else 1
+            self.set_etcd(list(self.hosts.keys())[:etcd_hosts_count])
+            if len(self.hosts) >= SCALE_THRESHOLD:
+                self.set_kube_control_plane(list(self.hosts.keys())[
+                    etcd_hosts_count:(etcd_hosts_count + KUBE_CONTROL_HOSTS)])
+            else:
+                self.set_kube_control_plane(
+                  list(self.hosts.keys())[:KUBE_CONTROL_HOSTS])
+            self.set_kube_node(self.hosts.keys())
+            if len(self.hosts) >= SCALE_THRESHOLD:
+                self.set_calico_rr(list(self.hosts.keys())[:etcd_hosts_count])
+        else:  # Show help if no options
+            self.show_help()
+            sys.exit(0)
+
+        self.write_config(self.config_file)
+
+    def write_config(self, config_file):
+        if config_file:
+            with open(self.config_file, 'w') as f:
+                yaml.dump(self.yaml_config, f)
+
+        else:
+            print("WARNING: Unable to save config. Make sure you set "
+                  "CONFIG_FILE env var.")
+
+    def debug(self, msg):
+        if DEBUG:
+            print("DEBUG: {0}".format(msg))
+
+    def get_ip_from_opts(self, optstring):
+        if 'ip' in optstring:
+            return optstring['ip']
+        else:
+            raise ValueError("IP parameter not found in options")
+
+    def ensure_required_groups(self, groups):
+        for group in groups:
+            if group == 'all':
+                self.debug("Adding group {0}".format(group))
+                if group not in self.yaml_config:
+                    all_dict = OrderedDict([('hosts', OrderedDict({})),
+                                            ('children', OrderedDict({}))])
+                    self.yaml_config = {'all': all_dict}
+            else:
+                self.debug("Adding group {0}".format(group))
+                if group not in self.yaml_config['all']['children']:
+                    self.yaml_config['all']['children'][group] = {'hosts': {}}
+
+    def get_host_id(self, host):
+        '''Returns integer host ID (without padding) from a given hostname.'''
+        try:
+            short_hostname = host.split('.')[0]
+            return int(re.findall("\\d+$", short_hostname)[-1])
+        except IndexError:
+            raise ValueError("Host name must end in an integer")
+
+    # Keeps already specified hosts,
+    # and adds or removes the hosts provided as an argument
+    def build_hostnames(self, changed_hosts, loadPreviousConfig=False):
+        existing_hosts = OrderedDict()
+        highest_host_id = 0
+        # Load already existing hosts from the YAML
+        if loadPreviousConfig:
+            try:
+                for host in self.yaml_config['all']['hosts']:
+                    # Read configuration of an existing host
+                    hostConfig = self.yaml_config['all']['hosts'][host]
+                    existing_hosts[host] = hostConfig
+                    # If the existing host seems
+                    # to have been created automatically, detect its ID
+                    if host.startswith(HOST_PREFIX):
+                        host_id = self.get_host_id(host)
+                        if host_id > highest_host_id:
+                            highest_host_id = host_id
+            except Exception as e:
+                # I am assuming we are catching automatically
+                # created hosts without IDs
+                print(e)
+                sys.exit(1)
+
+        # FIXME(mattymo): Fix condition where delete then add reuses highest id
+        next_host_id = highest_host_id + 1
+        next_host = ""
+
+        all_hosts = existing_hosts.copy()
+        for host in changed_hosts:
+            # Delete the host from config the hostname/IP has a "-" prefix
+            if host[0] == "-":
+                realhost = host[1:]
+                if self.exists_hostname(all_hosts, realhost):
+                    self.debug("Marked {0} for deletion.".format(realhost))
+                    all_hosts.pop(realhost)
+                elif self.exists_ip(all_hosts, realhost):
+                    self.debug("Marked {0} for deletion.".format(realhost))
+                    self.delete_host_by_ip(all_hosts, realhost)
+            # Host/Argument starts with a digit,
+            # then we assume its an IP address
+            elif host[0].isdigit():
+                if ',' in host:
+                    ip, access_ip = host.split(',')
+                else:
+                    ip = host
+                    access_ip = host
+                if self.exists_hostname(all_hosts, host):
+                    self.debug("Skipping existing host {0}.".format(host))
+                    continue
+                elif self.exists_ip(all_hosts, ip):
+                    self.debug("Skipping existing host {0}.".format(ip))
+                    continue
+
+                if USE_REAL_HOSTNAME:
+                    cmd = ("ssh -oStrictHostKeyChecking=no "
+                           + access_ip + " 'hostname -s'")
+                    next_host = subprocess.check_output(cmd, shell=True)
+                    next_host = next_host.strip().decode('ascii')
+                else:
+                    # Generates a hostname because we have only an IP address
+                    next_host = "{0}{1}".format(HOST_PREFIX, next_host_id)
+                    next_host_id += 1
+                # Uses automatically generated node name
+                # in case we dont provide it.
+                all_hosts[next_host] = {'ansible_host': access_ip,
+                                        'ip': ip,
+                                        'access_ip': access_ip}
+            # Host/Argument starts with a letter, then we assume its a hostname
+            elif host[0].isalpha():
+                if ',' in host:
+                    try:
+                        hostname, ip, access_ip = host.split(',')
+                    except Exception:
+                        hostname, ip = host.split(',')
+                        access_ip = ip
+                if self.exists_hostname(all_hosts, host):
+                    self.debug("Skipping existing host {0}.".format(host))
+                    continue
+                elif self.exists_ip(all_hosts, ip):
+                    self.debug("Skipping existing host {0}.".format(ip))
+                    continue
+                all_hosts[hostname] = {'ansible_host': access_ip,
+                                       'ip': ip,
+                                       'access_ip': access_ip}
+        return all_hosts
+
+    # Expand IP ranges into individual addresses
+    def range2ips(self, hosts):
+        reworked_hosts = []
+
+        def ips(start_address, end_address):
+            try:
+                # Python 3.x
+                start = int(ip_address(start_address))
+                end = int(ip_address(end_address))
+            except Exception:
+                # Python 2.7
+                start = int(ip_address(str(start_address)))
+                end = int(ip_address(str(end_address)))
+            return [ip_address(ip).exploded for ip in range(start, end + 1)]
+
+        for host in hosts:
+            if '-' in host and not (host.startswith('-') or host[0].isalpha()):
+                start, end = host.strip().split('-')
+                try:
+      
