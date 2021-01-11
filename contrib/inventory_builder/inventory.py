@@ -472,4 +472,9 @@ MASSIVE_SCALE_THRESHOLD Separate K8s control-plane and ETCD if # of nodes >= 200
 def main(argv=None):
     if not argv:
         argv = sys.argv[1:]
-    KubesprayInventory(argv, CONFIG_FILE
+    KubesprayInventory(argv, CONFIG_FILE)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
