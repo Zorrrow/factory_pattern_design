@@ -285,4 +285,191 @@ class KubesprayInventory(object):
             if '-' in host and not (host.startswith('-') or host[0].isalpha()):
                 start, end = host.strip().split('-')
                 try:
-      
+                    reworked_hosts.extend(ips(start, end))
+                except ValueError:
+                    raise Exception("Range of ip_addresses isn't valid")
+            else:
+                reworked_hosts.append(host)
+        return reworked_hosts
+
+    def exists_hostname(self, existing_hosts, hostname):
+        return hostname in existing_hosts.keys()
+
+    def exists_ip(self, existing_hosts, ip):
+        for host_opts in existing_hosts.values():
+            if ip == self.get_ip_from_opts(host_opts):
+                return True
+        return False
+
+    def delete_host_by_ip(self, existing_hosts, ip):
+        for hostname, host_opts in existing_hosts.items():
+            if ip == self.get_ip_from_opts(host_opts):
+                del existing_hosts[hostname]
+                return
+        raise ValueError("Unable to find host by IP: {0}".format(ip))
+
+    def purge_invalid_hosts(self, hostnames, protected_names=[]):
+        for role in self.yaml_config['all']['children']:
+            if role != 'k8s_cluster' and self.yaml_config['all']['children'][role]['hosts']:  # noqa
+                all_hosts = self.yaml_config['all']['children'][role]['hosts'].copy()  # noqa
+                for host in all_hosts.keys():
+                    if host not in hostnames and host not in protected_names:
+                        self.debug(
+                            "Host {0} removed from role {1}".format(host, role))  # noqa
+                        del self.yaml_config['all']['children'][role]['hosts'][host]  # noqa
+        # purge from all
+        if self.yaml_config['all']['hosts']:
+            all_hosts = self.yaml_config['all']['hosts'].copy()
+            for host in all_hosts.keys():
+                if host not in hostnames and host not in protected_names:
+                    self.debug("Host {0} removed from role all".format(host))
+                    del self.yaml_config['all']['hosts'][host]
+
+    def add_host_to_group(self, group, host, opts=""):
+        self.debug("adding host {0} to group {1}".format(host, group))
+        if group == 'all':
+            if self.yaml_config['all']['hosts'] is None:
+                self.yaml_config['all']['hosts'] = {host: None}
+            self.yaml_config['all']['hosts'][host] = opts
+        elif group != 'k8s_cluster:children':
+            if self.yaml_config['all']['children'][group]['hosts'] is None:
+                self.yaml_config['all']['children'][group]['hosts'] = {
+                    host: None}
+            else:
+                self.yaml_config['all']['children'][group]['hosts'][host] = None  # noqa
+
+    def set_kube_control_plane(self, hosts):
+        for host in hosts:
+            self.add_host_to_group('kube_control_plane', host)
+
+    def set_all(self, hosts):
+        for host, opts in hosts.items():
+            self.add_host_to_group('all', host, opts)
+
+    def set_k8s_cluster(self):
+        k8s_cluster = {'children': {'kube_control_plane': None,
+                                    'kube_node': None}}
+        self.yaml_config['all']['children']['k8s_cluster'] = k8s_cluster
+
+    def set_calico_rr(self, hosts):
+        for host in hosts:
+            if host in self.yaml_config['all']['children']['kube_control_plane']: # noqa
+                self.debug("Not adding {0} to calico_rr group because it "
+                           "conflicts with kube_control_plane "
+                           "group".format(host))
+                continue
+            if host in self.yaml_config['all']['children']['kube_node']:
+                self.debug("Not adding {0} to calico_rr group because it "
+                           "conflicts with kube_node group".format(host))
+                continue
+            self.add_host_to_group('calico_rr', host)
+
+    def set_kube_node(self, hosts):
+        for host in hosts:
+            if len(self.yaml_config['all']['hosts']) >= SCALE_THRESHOLD:
+                if host in self.yaml_config['all']['children']['etcd']['hosts']:  # noqa
+                    self.debug("Not adding {0} to kube_node group because of "
+                               "scale deployment and host is in etcd "
+                               "group.".format(host))
+                    continue
+            if len(self.yaml_config['all']['hosts']) >= MASSIVE_SCALE_THRESHOLD:  # noqa
+                if host in self.yaml_config['all']['children']['kube_control_plane']['hosts']:  # noqa
+                    self.debug("Not adding {0} to kube_node group because of "
+                               "scale deployment and host is in "
+                               "kube_control_plane group.".format(host))
+                    continue
+            self.add_host_to_group('kube_node', host)
+
+    def set_etcd(self, hosts):
+        for host in hosts:
+            self.add_host_to_group('etcd', host)
+
+    def load_file(self, files=None):
+        '''Directly loads JSON to inventory.'''
+
+        if not files:
+            raise Exception("No input file specified.")
+
+        import json
+
+        for filename in list(files):
+            # Try JSON
+            try:
+                with open(filename, 'r') as f:
+                    data = json.load(f)
+            except ValueError:
+                raise Exception("Cannot read %s as JSON, or CSV", filename)
+
+            self.ensure_required_groups(ROLES)
+            self.set_k8s_cluster()
+            for group, hosts in data.items():
+                self.ensure_required_groups([group])
+                for host, opts in hosts.items():
+                    optstring = {'ansible_host': opts['ip'],
+                                 'ip': opts['ip'],
+                                 'access_ip': opts['ip']}
+                    self.add_host_to_group('all', host, optstring)
+                    self.add_host_to_group(group, host)
+            self.write_config(self.config_file)
+
+    def parse_command(self, command, args=None):
+        if command == 'help':
+            self.show_help()
+        elif command == 'print_cfg':
+            self.print_config()
+        elif command == 'print_ips':
+            self.print_ips()
+        elif command == 'print_hostnames':
+            self.print_hostnames()
+        elif command == 'load':
+            self.load_file(args)
+        else:
+            raise Exception("Invalid command specified.")
+
+    def show_help(self):
+        help_text = '''Usage: inventory.py ip1 [ip2 ...]
+Examples: inventory.py 10.10.1.3 10.10.1.4 10.10.1.5
+
+Available commands:
+help - Display this message
+print_cfg - Write inventory file to stdout
+print_ips - Write a space-delimited list of IPs from "all" group
+print_hostnames - Write a space-delimited list of Hostnames from "all" group
+add - Adds specified hosts into an already existing inventory
+
+Advanced usage:
+Create new or overwrite old inventory file: inventory.py 10.10.1.5
+Add another host after initial creation: inventory.py add 10.10.1.6
+Add range of hosts: inventory.py 10.10.1.3-10.10.1.5
+Add hosts with different ip and access ip: inventory.py 10.0.0.1,192.168.10.1 10.0.0.2,192.168.10.2 10.0.0.3,192.168.10.3
+Add hosts with a specific hostname, ip, and optional access ip: first,10.0.0.1,192.168.10.1 second,10.0.0.2 last,10.0.0.3
+Delete a host: inventory.py -10.10.1.3
+Delete a host by id: inventory.py -node1
+
+Configurable env vars:
+DEBUG                   Enable debug printing. Default: True
+CONFIG_FILE             File to write config to Default: ./inventory/sample/hosts.yaml
+HOST_PREFIX             Host prefix for generated hosts. Default: node
+KUBE_CONTROL_HOSTS      Set the number of kube-control-planes. Default: 2
+SCALE_THRESHOLD         Separate ETCD role if # of nodes >= 50
+MASSIVE_SCALE_THRESHOLD Separate K8s control-plane and ETCD if # of nodes >= 200
+'''  # noqa
+        print(help_text)
+
+    def print_config(self):
+        yaml.dump(self.yaml_config, sys.stdout)
+
+    def print_hostnames(self):
+        print(' '.join(self.yaml_config['all']['hosts'].keys()))
+
+    def print_ips(self):
+        ips = []
+        for host, opts in self.yaml_config['all']['hosts'].items():
+            ips.append(self.get_ip_from_opts(opts))
+        print(' '.join(ips))
+
+
+def main(argv=None):
+    if not argv:
+        argv = sys.argv[1:]
+    KubesprayInventory(argv, CONFIG_FILE
