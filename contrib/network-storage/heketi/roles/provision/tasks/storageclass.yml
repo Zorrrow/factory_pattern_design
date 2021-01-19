@@ -20,4 +20,7 @@
   register: "rendering"
 - name: "Kubernetes Apps | Install and configure Storace Class"
   kube:
-    name: "Gluster
+    name: "GlusterFS"
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/storageclass.yml"
+    state: "{{ rendering.changed | ternary('latest', 'present') }}"
