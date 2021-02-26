@@ -94,4 +94,37 @@ module "compute" {
   group_vars_path                              = var.group_vars_path
   port_security_enabled                        = var.port_security_enabled
   force_null_port_security                     = var.force_null_port_security
-  network_router_id                            = modu
+  network_router_id                            = module.network.router_id
+  network_id                                   = module.network.network_id
+  use_existing_network                         = var.use_existing_network
+  private_subnet_id                            = module.network.subnet_id
+  additional_server_groups                     = var.additional_server_groups
+
+  depends_on = [
+    module.network.subnet_id
+  ]
+}
+
+output "private_subnet_id" {
+  value = module.network.subnet_id
+}
+
+output "floating_network_id" {
+  value = var.external_net
+}
+
+output "router_id" {
+  value = module.network.router_id
+}
+
+output "k8s_master_fips" {
+  value = var.number_of_k8s_masters + var.number_of_k8s_masters_no_etcd > 0 ? concat(module.ips.k8s_master_fips, module.ips.k8s_master_no_etcd_fips) : [for key, value in module.ips.k8s_masters_fips : value.address]
+}
+
+output "k8s_node_fips" {
+  value = var.number_of_k8s_nodes > 0 ? module.ips.k8s_node_fips : [for key, value in module.ips.k8s_nodes_fips : value.address]
+}
+
+output "bastion_fips" {
+  value = module.ips.bastion_fips
+}
