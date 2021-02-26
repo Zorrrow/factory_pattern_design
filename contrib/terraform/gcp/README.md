@@ -74,4 +74,31 @@ ansible-playbook -i contrib/terraform/gcs/inventory.ini cluster.yml -b -v
 * `ssh_whitelist`: List of IP ranges (CIDR) that will be allowed to ssh to the nodes
 * `api_server_whitelist`: List of IP ranges (CIDR) that will be allowed to connect to the API server
 * `nodeport_whitelist`: List of IP ranges (CIDR) that will be allowed to connect to the kubernetes nodes on port 30000-32767 (kubernetes nodeports)
-* `ingress_whitelist`: List of IP ranges (CIDR) that will be allowed to connect to in
+* `ingress_whitelist`: List of IP ranges (CIDR) that will be allowed to connect to ingress on ports 80 and 443
+* `extra_ingress_firewalls`: Additional ingress firewall rules. Key will be used as the name of the rule
+  * `source_ranges`: List of IP ranges (CIDR). Example: `["8.8.8.8"]`
+  * `protocol`: Protocol. Example `"tcp"`
+  * `ports`: List of ports, as string. Example `["53"]`
+  * `target_tags`: List of target tag (either the machine name or `control-plane` or `worker`). Example: `["control-plane", "worker-0"]`
+
+### Optional
+
+* `prefix`: Prefix to use for all resources, required to be unique for all clusters in the same project *(Defaults to `default`)*
+* `master_sa_email`: Service account email to use for the control plane nodes *(Defaults to `""`, auto generate one)*
+* `master_sa_scopes`: Service account email to use for the control plane nodes *(Defaults to `["https://www.googleapis.com/auth/cloud-platform"]`)*
+* `master_preemptible`: Enable [preemptible](https://cloud.google.com/compute/docs/instances/preemptible)
+  for the control plane nodes *(Defaults to `false`)*
+* `master_additional_disk_type`: [Disk type](https://cloud.google.com/compute/docs/disks/#disk-types)
+  for extra disks added on the control plane nodes *(Defaults to `"pd-ssd"`)*
+* `worker_sa_email`: Service account email to use for the worker nodes *(Defaults to `""`, auto generate one)*
+* `worker_sa_scopes`: Service account email to use for the worker nodes *(Defaults to `["https://www.googleapis.com/auth/cloud-platform"]`)*
+* `worker_preemptible`: Enable [preemptible](https://cloud.google.com/compute/docs/instances/preemptible)
+  for the worker nodes *(Defaults to `false`)*
+* `worker_additional_disk_type`: [Disk type](https://cloud.google.com/compute/docs/disks/#disk-types)
+  for extra disks added on the worker nodes *(Defaults to `"pd-ssd"`)*
+
+An example variables file can be found `tfvars.json`
+
+## Known limitations
+
+This solution does not provide a solution to use a bastion host. Thus all the nodes must expose a public IP for kubespray to work.
