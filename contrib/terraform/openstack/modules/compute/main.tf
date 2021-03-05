@@ -799,4 +799,172 @@ resource "openstack_networking_port_v2" "k8s_nodes_port" {
   network_id            = local.k8s_nodes_settings[each.key].network_id
   admin_state_up        = "true"
   port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
-  security_group_ids    = var.port
+  security_group_ids    = var.port_security_enabled ? local.worker_sec_groups : null
+  no_security_groups    = var.port_security_enabled ? null : false
+  dynamic "fixed_ip" {
+    for_each = var.private_subnet_id == "" ? [] : [true]
+    content {
+      subnet_id = var.private_subnet_id
+    }
+  }
+
+  depends_on = [
+    var.network_router_id
+  ]
+}
+
+resource "openstack_compute_instance_v2" "k8s_nodes" {
+  for_each          = var.number_of_k8s_nodes == 0 && var.number_of_k8s_nodes_no_floating_ip == 0 ? var.k8s_nodes : {}
+  name              = "${var.cluster_name}-k8s-node-${each.key}"
+  availability_zone = each.value.az
+  image_id          = local.k8s_nodes_settings[each.key].use_local_disk ? local.k8s_nodes_settings[each.key].image_id : null
+  flavor_id         = each.value.flavor
+  key_pair          = openstack_compute_keypair_v2.k8s.name
+  user_data         = each.value.cloudinit != null ? templatefile("${path.module}/templates/cloudinit.yaml.tmpl", {
+    extra_partitions = each.value.cloudinit.extra_partitions
+  }) : data.cloudinit_config.cloudinit.rendered
+
+  dynamic "block_device" {
+    for_each = !local.k8s_nodes_settings[each.key].use_local_disk ? [local.k8s_nodes_settings[each.key].image_id] : []
+    content {
+      uuid                  = block_device.value
+      source_type           = "image"
+      volume_size           = local.k8s_nodes_settings[each.key].volume_size
+      volume_type           = local.k8s_nodes_settings[each.key].volume_type
+      boot_index            = 0
+      destination_type      = "volume"
+      delete_on_termination = true
+    }
+  }
+
+  network {
+    port = openstack_networking_port_v2.k8s_nodes_port[each.key].id
+  }
+
+  dynamic "scheduler_hints" {
+    for_each = local.k8s_nodes_settings[each.key].server_group
+    content {
+      group = scheduler_hints.value
+    }
+  }
+
+  metadata = {
+    ssh_user         = var.ssh_user
+    kubespray_groups = "kube_node,k8s_cluster,%{if each.value.floating_ip == false}no_floating,%{endif}${var.supplementary_node_groups}${each.value.extra_groups != null ? ",${each.value.extra_groups}" : ""}"
+    depends_on       = var.network_router_id
+    use_access_ip    = var.use_access_ip
+  }
+
+  provisioner "local-exec" {
+    command = "%{if each.value.floating_ip}sed -e s/USER/${var.ssh_user}/ -e s/BASTION_ADDRESS/${element(concat(var.bastion_fips, [for key, value in var.k8s_nodes_fips : value.address]), 0)}/ ${path.module}/ansible_bastion_template.txt > ${var.group_vars_path}/no_floating.yml%{else}true%{endif}"
+  }
+}
+
+resource "openstack_networking_port_v2" "glusterfs_node_no_floating_ip_port" {
+  count                 = var.number_of_gfs_nodes_no_floating_ip
+  name                  = "${var.cluster_name}-gfs-node-nf-${count.index + 1}"
+  network_id            = var.use_existing_network ? data.openstack_networking_network_v2.k8s_network[0].id : var.network_id
+  admin_state_up        = "true"
+  port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
+  security_group_ids    = var.port_security_enabled ? local.gfs_sec_groups : null
+  no_security_groups    = var.port_security_enabled ? null : false
+  dynamic "fixed_ip" {
+    for_each = var.private_subnet_id == "" ? [] : [true]
+    content {
+      subnet_id = var.private_subnet_id
+    }
+  }
+
+  depends_on = [
+    var.network_router_id
+  ]
+}
+
+resource "openstack_compute_instance_v2" "glusterfs_node_no_floating_ip" {
+  name              = "${var.cluster_name}-gfs-node-nf-${count.index + 1}"
+  count             = var.number_of_gfs_nodes_no_floating_ip
+  availability_zone = element(var.az_list, count.index)
+  image_name        = var.gfs_root_volume_size_in_gb == 0 ? local.image_to_use_gfs : null
+  flavor_id         = var.flavor_gfs_node
+  key_pair          = openstack_compute_keypair_v2.k8s.name
+
+  dynamic "block_device" {
+    for_each = var.gfs_root_volume_size_in_gb > 0 ? [local.image_to_use_gfs] : []
+    content {
+      uuid                  = local.image_to_use_gfs
+      source_type           = "image"
+      volume_size           = var.gfs_root_volume_size_in_gb
+      boot_index            = 0
+      destination_type      = "volume"
+      delete_on_termination = true
+    }
+  }
+
+  network {
+    port = element(openstack_networking_port_v2.glusterfs_node_no_floating_ip_port.*.id, count.index)
+  }
+
+  dynamic "scheduler_hints" {
+    for_each = var.node_server_group_policy != "" ? [openstack_compute_servergroup_v2.k8s_node[0]] : []
+    content {
+      group = openstack_compute_servergroup_v2.k8s_node[0].id
+    }
+  }
+
+  metadata = {
+    ssh_user         = var.ssh_user_gfs
+    kubespray_groups = "gfs-cluster,network-storage,no_floating"
+    depends_on       = var.network_router_id
+    use_access_ip    = var.use_access_ip
+  }
+}
+
+resource "openstack_networking_floatingip_associate_v2" "bastion" {
+  count                 = var.number_of_bastions
+  floating_ip           = var.bastion_fips[count.index]
+  port_id               = element(openstack_networking_port_v2.bastion_port.*.id, count.index)
+}
+
+
+resource "openstack_networking_floatingip_associate_v2" "k8s_master" {
+  count                 = var.number_of_k8s_masters
+  floating_ip           = var.k8s_master_fips[count.index]
+  port_id               = element(openstack_networking_port_v2.k8s_master_port.*.id, count.index)
+}
+
+resource "openstack_networking_floatingip_associate_v2" "k8s_masters" {
+  for_each              = var.number_of_k8s_masters == 0 && var.number_of_k8s_masters_no_etcd == 0 && var.number_of_k8s_masters_no_floating_ip == 0 && var.number_of_k8s_masters_no_floating_ip_no_etcd == 0 ? { for key, value in var.k8s_masters : key => value if value.floating_ip } : {}
+  floating_ip           = var.k8s_masters_fips[each.key].address
+  port_id               = openstack_networking_port_v2.k8s_masters_port[each.key].id
+}
+
+resource "openstack_networking_floatingip_associate_v2" "k8s_master_no_etcd" {
+  count                 = var.master_root_volume_size_in_gb == 0 ? var.number_of_k8s_masters_no_etcd : 0
+  floating_ip           = var.k8s_master_no_etcd_fips[count.index]
+  port_id               = element(openstack_networking_port_v2.k8s_master_no_etcd_port.*.id, count.index)
+}
+
+resource "openstack_networking_floatingip_associate_v2" "k8s_node" {
+  count                 = var.node_root_volume_size_in_gb == 0 ? var.number_of_k8s_nodes : 0
+  floating_ip           = var.k8s_node_fips[count.index]
+  port_id               = element(openstack_networking_port_v2.k8s_node_port.*.id, count.index)
+}
+
+resource "openstack_networking_floatingip_associate_v2" "k8s_nodes" {
+  for_each              = var.number_of_k8s_nodes == 0 && var.number_of_k8s_nodes_no_floating_ip == 0 ? { for key, value in var.k8s_nodes : key => value if value.floating_ip } : {}
+  floating_ip           = var.k8s_nodes_fips[each.key].address
+  port_id               = openstack_networking_port_v2.k8s_nodes_port[each.key].id
+}
+
+resource "openstack_blockstorage_volume_v2" "glusterfs_volume" {
+  name        = "${var.cluster_name}-glusterfs_volume-${count.index + 1}"
+  count       = var.gfs_root_volume_size_in_gb == 0 ? var.number_of_gfs_nodes_no_floating_ip : 0
+  description = "Non-ephemeral volume for GlusterFS"
+  size        = var.gfs_volume_size_in_gb
+}
+
+resource "openstack_compute_volume_attach_v2" "glusterfs_volume" {
+  count       = var.gfs_root_volume_size_in_gb == 0 ? var.number_of_gfs_nodes_no_floating_ip : 0
+  instance_id = element(openstack_compute_instance_v2.glusterfs_node_no_floating_ip.*.id, count.index)
+  volume_id   = element(openstack_blockstorage_volume_v2.glusterfs_volume.*.id, count.index)
+}
