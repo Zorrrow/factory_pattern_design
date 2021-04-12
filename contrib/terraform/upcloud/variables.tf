@@ -62,4 +62,83 @@ variable "firewall_enabled" {
 }
 
 variable "master_allowed_remote_ips" {
-  description = "List of IP start/end addresses allowed to acces
+  description = "List of IP start/end addresses allowed to access API of masters"
+  type = list(object({
+    start_address = string
+    end_address   = string
+  }))
+  default = []
+}
+
+variable "k8s_allowed_remote_ips" {
+  description = "List of IP start/end addresses allowed to SSH to hosts"
+  type = list(object({
+    start_address = string
+    end_address   = string
+  }))
+  default = []
+}
+
+variable "master_allowed_ports" {
+  description = "List of ports to allow on masters"
+  type = list(object({
+    protocol       = string
+    port_range_min = number
+    port_range_max = number
+    start_address  = string
+    end_address    = string
+  }))
+}
+
+variable "worker_allowed_ports" {
+  description = "List of ports to allow on workers"
+  type = list(object({
+    protocol       = string
+    port_range_min = number
+    port_range_max = number
+    start_address  = string
+    end_address    = string
+  }))
+}
+
+variable "firewall_default_deny_in" {
+  description = "Add firewall policies that deny all inbound traffic by default"
+  default     = false
+}
+
+variable "firewall_default_deny_out" {
+  description = "Add firewall policies that deny all outbound traffic by default"
+  default     = false
+}
+
+variable "loadbalancer_enabled" {
+  description = "Enable load balancer"
+  default     = false
+}
+
+variable "loadbalancer_plan" {
+  description = "Load balancer plan (development/production-small)"
+  default     = "development"
+}
+
+variable "loadbalancers" {
+  description = "Load balancers"
+
+  type = map(object({
+    port            = number
+    target_port     = number
+    backend_servers = list(string)
+  }))
+  default = {}
+}
+
+variable "server_groups" {
+  description = "Server groups"
+
+  type = map(object({
+    anti_affinity = bool
+    servers       = list(string)
+  }))
+
+  default = {}
+}
