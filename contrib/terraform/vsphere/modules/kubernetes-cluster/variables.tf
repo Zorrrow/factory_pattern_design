@@ -30,4 +30,14 @@ variable "folder" {}
 variable "ssh_public_keys" {
   type = list(string)
 }
-variab
+variable "hardware_version" {}
+
+## Master ##
+variable "master_cores" {}
+variable "master_memory" {}
+variable "master_disk_size" {}
+
+## Worker ##
+variable "worker_cores" {}
+variable "worker_memory" {}
+variable "worker_disk_size" {}
