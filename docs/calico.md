@@ -323,4 +323,109 @@ neutron  security-group-rule-create  --protocol 4  --direction igress  k8s-a0tp4
 
 Calico currently supports two types of CNI IPAM plugins, `host-local` and `calico-ipam` (default).
 
-To allow C
+To allow Calico to determine the subnet to use from the Kubernetes API based on the `Node.podCIDR` field, enable the following setting.
+
+```yml
+calico_ipam_host_local: true
+```
+
+Refer to Project Calico section [Using host-local IPAM](https://docs.projectcalico.org/reference/cni-plugin/configuration#using-host-local-ipam) for further information.
+
+### Optional : Disable CNI logging to disk
+
+Calico CNI plugin logs to /var/log/calico/cni/cni.log and to stderr.
+stderr of CNI plugins can be found in the logs of container runtime.
+
+You can disable Calico CNI logging to disk by setting `calico_cni_log_file_path: false`.
+
+## eBPF Support
+
+Calico supports eBPF for its data plane see [an introduction to the Calico eBPF Dataplane](https://www.projectcalico.org/introducing-the-calico-ebpf-dataplane/) for further information.
+
+Note that it is advisable to always use the latest version of Calico when using the eBPF dataplane.
+
+### Enabling eBPF support
+
+To enable the eBPF dataplane support ensure you add the following to your inventory. Note that the `kube-proxy` is incompatible with running Calico in eBPF mode and the kube-proxy should be removed from the system.
+
+```yaml
+calico_bpf_enabled: true
+```
+
+**NOTE:** there is known incompatibility in using the `kernel-kvm` kernel package on Ubuntu OSes because it is missing support for `CONFIG_NET_SCHED` which is a requirement for Calico eBPF support. When using Calico eBPF with Ubuntu ensure you run the `-generic` kernel.
+
+### Cleaning up after kube-proxy
+
+Calico node cannot clean up after kube-proxy has run in ipvs mode. If you are converting an existing cluster to eBPF you will need to ensure the `kube-proxy` DaemonSet is deleted and that ipvs rules are cleaned.
+
+To check that kube-proxy was running in ipvs mode:
+
+```ShellSession
+# ipvsadm -l
+```
+
+To clean up any ipvs leftovers:
+
+```ShellSession
+# ipvsadm -C
+```
+
+### Calico access to the kube-api
+
+Calico node, typha and kube-controllers need to be able to talk to the kubernetes API. Please reference the [Enabling eBPF Calico Docs](https://docs.projectcalico.org/maintenance/ebpf/enabling-bpf) for guidelines on how to do this.
+
+Kubespray sets up the `kubernetes-services-endpoint` configmap based on the contents of the `loadbalancer_apiserver` inventory variable documented in [HA Mode](/docs/ha-mode.md).
+
+If no external loadbalancer is used, Calico eBPF can also use the localhost loadbalancer option. In this case Calico Automatic Host Endpoints need to be enabled to allow services like `coredns` and `metrics-server` to communicate with the kubernetes host endpoint. See [this blog post](https://www.projectcalico.org/securing-kubernetes-nodes-with-calico-automatic-host-endpoints/) on enabling automatic host endpoints.
+
+```yaml
+loadbalancer_apiserver_localhost: true
+use_localhost_as_kubeapi_loadbalancer: true
+```
+
+### Tunneled versus Direct Server Return
+
+By default Calico uses Tunneled service mode but it can use direct server return (DSR) in order to optimize the return path for a service.
+
+To configure DSR:
+
+```yaml
+calico_bpf_service_mode: "DSR"
+```
+
+### eBPF Logging and Troubleshooting
+
+In order to enable Calico eBPF mode logging:
+
+```yaml
+calico_bpf_log_level: "Debug"
+```
+
+To view the logs you need to use the `tc` command to read the kernel trace buffer:
+
+```ShellSession
+tc exec bpf debug
+```
+
+Please see [Calico eBPF troubleshooting guide](https://docs.projectcalico.org/maintenance/troubleshoot/troubleshoot-ebpf#ebpf-program-debug-logs).
+
+## Wireguard Encryption
+
+Calico supports using Wireguard for encryption. Please see the docs on [encrypt cluster pod traffic](https://docs.projectcalico.org/security/encrypt-cluster-pod-traffic).
+
+To enable wireguard support:
+
+```yaml
+calico_wireguard_enabled: true
+```
+
+The following OSes will require enabling the EPEL repo in order to bring in wireguard tools:
+
+* CentOS 7 & 8
+* AlmaLinux 8
+* Rocky Linux 8
+* Amazon Linux 2
+
+```yaml
+epel_enabled: true
+```
