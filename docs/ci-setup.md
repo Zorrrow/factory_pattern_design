@@ -117,4 +117,90 @@ nodelocaldns_ip: 169.254.255.100
 calico_ipip_mode: "Never"
 calico_vxlan_mode: "Never"
 calico_network_backend: "bird"
-calico_wireguard_enable
+calico_wireguard_enabled: True
+
+# Cluster settings
+upgrade_cluster_setup: True
+force_certificate_regeneration: True
+
+# Etcd settings
+etcd_deployment_type: "host"
+
+# Kubernetes settings
+kube_controller_terminated_pod_gc_threshold: 100
+kubelet_enforce_node_allocatable: pods
+kubelet_preferred_address_types: 'InternalIP,ExternalIP,Hostname'
+kubelet_custom_flags:
+  - "--serialize-image-pulls=true"
+  - "--eviction-hard=memory.available<1Gi"
+  - "--eviction-soft-grace-period=memory.available=30s"
+  - "--eviction-soft=memory.available<2Gi"
+  - "--system-reserved cpu=100m,memory=4Gi"
+  - "--eviction-minimum-reclaim=memory.available=2Gi"
+
+# DNS settings
+resolvconf_mode: none
+dns_min_replicas: 1
+upstream_dns_servers:
+  - 1.1.1.1
+  - 1.0.0.1
+
+# Extensions
+ingress_nginx_enabled: True
+helm_enabled: True
+cert_manager_enabled: True
+metrics_server_enabled: True
+
+# Enable ZSWAP
+kubelet_fail_swap_on: False
+kube_feature_gates:
+  - "NodeSwap=True"
+```
+
+## Aditional files
+
+This section documents additional files used to complete a deployment of the kubespray CI, these files sit on the control-plane node and assume a working kubernetes cluster.
+
+### /root/nscleanup.sh
+
+```bash
+#!/bin/bash
+
+kubectl=/usr/local/bin/kubectl
+
+$kubectl get ns | grep -P "(\d.+-\d.+)" | awk 'match($3,/[0-9]+d/) {print $1}' | xargs -r $kubectl delete ns
+$kubectl get ns | grep -P "(\d.+-\d.+)" | awk 'match($3,/[3-9]+h/) {print $1}' | xargs -r $kubectl delete ns
+$kubectl get ns | grep Terminating | awk '{print $1}' | xargs -i $kubectl delete vmi/instance-1 vmi/instance-0 vmi/instance-2 -n {} --force --grace-period=0 &
+```
+
+### /root/path-calico.sh
+
+```bash
+#!/bin/bash
+
+calicoctl patch felixconfig default -p '{"spec":{"allowIPIPPacketsFromWorkloads":true, "allowVXLANPacketsFromWorkloads": true}}'
+```
+
+### /root/kubevirt/kubevirt.sh
+
+```bash
+#!/bin/bash
+
+export VERSION=$(curl -s https://api.github.com/repos/kubevirt/kubevirt/releases | grep tag_name | grep -v -- '-rc' | sort -r | head -1 | awk -F': ' '{print $2}' | sed 's/,//' | xargs)
+echo $VERSION
+kubectl apply -f https://github.com/kubevirt/kubevirt/releases/download/${VERSION}/kubevirt-operator.yaml
+kubectl apply -f https://github.com/kubevirt/kubevirt/releases/download/${VERSION}/kubevirt-cr.yaml
+```
+
+### /root/kubevirt/virtctl.sh
+
+```bash
+#!/bin/bash
+
+VERSION=$(kubectl get kubevirt.kubevirt.io/kubevirt -n kubevirt -o=jsonpath="{.status.observedKubeVirtVersion}")
+ARCH=$(uname -s | tr A-Z a-z)-$(uname -m | sed 's/x86_64/amd64/') || windows-amd64.exe
+echo ${ARCH}
+curl -L -o virtctl https://github.com/kubevirt/kubevirt/releases/download/${VERSION}/virtctl-${VERSION}-${ARCH}
+chmod +x virtctl
+sudo install virtctl /usr/local/bin
+```
