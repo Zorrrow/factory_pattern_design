@@ -10,4 +10,21 @@
 ansible-playbook contrib/mitogen/mitogen.yml
 ```
 
-The above playbook sets the ansible `strategy` and `strategy_plugins` in `ansible.cfg` but you can also enable them if you use your own `ansible.cfg` by sett
+The above playbook sets the ansible `strategy` and `strategy_plugins` in `ansible.cfg` but you can also enable them if you use your own `ansible.cfg` by setting the environment varialbles:
+
+```ShellSession
+export ANSIBLE_STRATEGY=mitogen_linear
+export ANSIBLE_STRATEGY_PLUGINS=plugins/mitogen/ansible_mitogen/plugins/strategy
+```
+
+... or `ansible.cfg` setup:
+
+```ini
+[defaults]
+strategy_plugins = plugins/mitogen/ansible_mitogen/plugins/strategy
+strategy=mitogen_linear
+```
+
+## Limitation
+
+If you are experiencing problems, please see the [documentation](https://mitogen.networkgenomics.com/ansible_detailed.html#noteworthy-differences).
