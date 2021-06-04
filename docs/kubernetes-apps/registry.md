@@ -220,4 +220,25 @@ To use an image hosted by this registry, simply say this in your `Pod`'s
 `spec.containers[].image` field:
 
 ```yaml
-    image: localhost:5000/user/conta
+    image: localhost:5000/user/container
+```
+
+Before you can use the registry, you have to be able to get images into it,
+though. If you are building an image on your Kubernetes `Node`, you can spell
+out `localhost:5000` when you build and push. More likely, though, you are
+building locally and want to push to your cluster.
+
+You can use `kubectl` to set up a port-forward from your local node to a
+running Pod:
+
+```ShellSession
+$ POD=$(kubectl get pods --namespace kube-system -l k8s-app=registry \
+            -o template --template '{{range .items}}{{.metadata.name}} {{.status.phase}}{{"\n"}}{{end}}' \
+            | grep Running | head -1 | cut -f1 -d' ')
+
+$ kubectl port-forward --namespace kube-system $POD 5000:5000 &
+```
+
+Now you can build and push images on your local computer as
+`localhost:5000/yourname/container` and those images will be available inside
+your kubernetes cluster with the same name.
