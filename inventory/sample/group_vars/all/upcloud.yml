@@ -21,4 +21,4 @@
 #     is_default: false
 #     expand_persistent_volumes: true
 #     parameters:
-#       tier: hd
+#       tier: hdd
