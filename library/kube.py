@@ -287,4 +287,71 @@ class KubeManager(object):
             if self.name:
                 cmd.append(self.name)
 
- 
+            if self.label:
+                cmd.append('--selector=' + self.label)
+
+            if self.all:
+                cmd.append('--all')
+
+            if self.force:
+                cmd.append('--ignore-not-found')
+
+        return self._execute(cmd)
+
+
+def main():
+
+    module = AnsibleModule(
+        argument_spec=dict(
+            name=dict(),
+            filename=dict(type='list', aliases=['files', 'file', 'filenames']),
+            namespace=dict(),
+            resource=dict(),
+            label=dict(),
+            server=dict(),
+            kubectl=dict(),
+            force=dict(default=False, type='bool'),
+            wait=dict(default=False, type='bool'),
+            all=dict(default=False, type='bool'),
+            log_level=dict(default=0, type='int'),
+            state=dict(default='present', choices=['present', 'absent', 'latest', 'reloaded', 'stopped', 'exists']),
+            recursive=dict(default=False, type='bool'),
+            ),
+            mutually_exclusive=[['filename', 'list']]
+        )
+
+    changed = False
+
+    manager = KubeManager(module)
+    state = module.params.get('state')
+    if state == 'present':
+        result = manager.create(check=False)
+
+    elif state == 'absent':
+        result = manager.delete()
+
+    elif state == 'reloaded':
+        result = manager.replace()
+
+    elif state == 'stopped':
+        result = manager.stop()
+
+    elif state == 'latest':
+        result = manager.replace()
+
+    elif state == 'exists':
+        result = manager.exists()
+        module.exit_json(changed=changed,
+                     msg='%s' % result)
+
+    else:
+        module.fail_json(msg='Unrecognized state %s.' % state)
+
+    module.exit_json(changed=changed,
+                     msg='success: %s' % (' '.join(result))
+                     )
+
+
+from ansible.module_utils.basic import *  # noqa
+if __name__ == '__main__':
+    main()
