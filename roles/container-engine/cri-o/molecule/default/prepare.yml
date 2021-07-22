@@ -18,4 +18,35 @@
 
 - name: Prepare CNI
   hosts: all
-  gather_facts:
+  gather_facts: False
+  become: true
+  vars:
+    ignore_assert_errors: true
+    kube_network_plugin: cni
+  roles:
+    - role: kubespray-defaults
+    - role: network_plugin/cni
+  tasks:
+    - name: Copy test container files
+      copy:
+        src: "{{ item }}"
+        dest: "/tmp/{{ item }}"
+        owner: root
+        mode: 0644
+      with_items:
+        - container.json
+        - sandbox.json
+    - name: Create /etc/cni/net.d directory
+      file:
+        path: /etc/cni/net.d
+        state: directory
+        owner: "{{ kube_owner }}"
+        mode: 0755
+    - name: Setup CNI
+      copy:
+        src: "{{ item }}"
+        dest: "/etc/cni/net.d/{{ item }}"
+        owner: root
+        mode: 0644
+      with_items:
+        - 10-mynet.conf
