@@ -1,0 +1,29 @@
+---
+
+- name: set dns server for docker
+  set_fact:
+    docker_dns_servers: "{{ dns_servers }}"
+
+- name: show docker_dns_servers
+  debug:
+    msg: "{{ docker_dns_servers }}"
+
+- name: add upstream dns servers
+  set_fact:
+    docker_dns_servers: "{{ docker_dns_servers + upstream_dns_servers|default([]) }}"
+  when: dns_mode in ['coredns', 'coredns_dual']
+
+- name: add global searchdomains
+  set_fact:
+    docker_dns_search_domains: "{{ docker_dns_search_domains + searchdomains|default([]) }}"
+
+- name: check system nameservers
+  shell: set -o pipefail && grep "^nameserver" /etc/resolv.conf | sed -r 's/^nameserver\s*([^#\s]+)\s*(#.*)?/\1/'
+  args:
+    executable: /bin/bash
+  changed_when: False
+  register: system_nameservers
+  check_mode: no
+
+- name: check system search domains
+  # noqa 306 - if resolf.conf has no search domain, grep will exit 1 which would force
