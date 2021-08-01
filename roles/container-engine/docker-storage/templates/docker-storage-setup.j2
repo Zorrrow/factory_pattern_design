@@ -26,4 +26,10 @@
 
 {%if docker_container_storage_setup_device_wait_timeout is defined%}DEVICE_WAIT_TIMEOUT={{docker_container_storage_setup_device_wait_timeout}}{%endif%}
 
-{%if docker_container_storage_setup_wipe_signatures is defined%}WIPE_SIGNATURES={{docker
+{%if docker_container_storage_setup_wipe_signatures is defined%}WIPE_SIGNATURES={{docker_container_storage_setup_wipe_signatures}}{%endif%}
+
+{%if docker_container_storage_setup_container_root_lv_name is defined%}CONTAINER_ROOT_LV_NAME={{docker_container_storage_setup_container_root_lv_name}}{%endif%}
+
+{%if docker_container_storage_setup_container_root_lv_size is defined%}CONTAINER_ROOT_LV_SIZE={{docker_container_storage_setup_container_root_lv_size}}{%endif%}
+
+{%if docker_container_storage_setup_container_root_lv_mount_path is defined%}CONTAINER_ROOT_LV_MOUNT_PATH={{docker_container_storage_setup_container_root_lv_mount_path}}{%endif%}
