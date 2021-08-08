@@ -303,4 +303,217 @@ enable_debug = {{ kata_containers_qemu_debug }}
 # Default 0
 #pcie_root_port = 2
 
-# If vhost-net backend for virtio-net is not desired, set to tru
+# If vhost-net backend for virtio-net is not desired, set to true. Default is false, which trades off
+# security (vhost-net runs ring0) for network I/O performance.
+#disable_vhost_net = true
+
+#
+# Default entropy source.
+# The path to a host source of entropy (including a real hardware RNG)
+# /dev/urandom and /dev/random are two main options.
+# Be aware that /dev/random is a blocking source of entropy.  If the host
+# runs out of entropy, the VMs boot time will increase leading to get startup
+# timeouts.
+# The source of entropy /dev/urandom is non-blocking and provides a
+# generally acceptable source of entropy. It should work well for pretty much
+# all practical purposes.
+#entropy_source= "/dev/urandom"
+
+# List of valid annotations values for entropy_source
+# The default if not set is empty (all annotations rejected.)
+# Your distribution recommends: ["/dev/urandom","/dev/random",""]
+valid_entropy_sources = ["/dev/urandom","/dev/random",""]
+
+# Path to OCI hook binaries in the *guest rootfs*.
+# This does not affect host-side hooks which must instead be added to
+# the OCI spec passed to the runtime.
+#
+# You can create a rootfs with hooks by customizing the osbuilder scripts:
+# https://github.com/kata-containers/osbuilder
+#
+# Hooks must be stored in a subdirectory of guest_hook_path according to their
+# hook type, i.e. "guest_hook_path/{prestart,postart,poststop}".
+# The agent will scan these directories for executable files and add them, in
+# lexicographical order, to the lifecycle of the guest container.
+# Hooks are executed in the runtime namespace of the guest. See the official documentation:
+# https://github.com/opencontainers/runtime-spec/blob/v1.0.1/config.md#posix-platform-hooks
+# Warnings will be logged if any error is encountered will scanning for hooks,
+# but it will not abort container execution.
+#guest_hook_path = "/usr/share/oci/hooks"
+#
+# Use rx Rate Limiter to control network I/O inbound bandwidth(size in bits/sec for SB/VM).
+# In Qemu, we use classful qdiscs HTB(Hierarchy Token Bucket) to discipline traffic.
+# Default 0-sized value means unlimited rate.
+#rx_rate_limiter_max_rate = 0
+# Use tx Rate Limiter to control network I/O outbound bandwidth(size in bits/sec for SB/VM).
+# In Qemu, we use classful qdiscs HTB(Hierarchy Token Bucket) and ifb(Intermediate Functional Block)
+# to discipline traffic.
+# Default 0-sized value means unlimited rate.
+#tx_rate_limiter_max_rate = 0
+
+# Set where to save the guest memory dump file.
+# If set, when GUEST_PANICKED event occurred,
+# guest memeory will be dumped to host filesystem under guest_memory_dump_path,
+# This directory will be created automatically if it does not exist.
+#
+# The dumped file(also called vmcore) can be processed with crash or gdb.
+#
+# WARNING:
+#   Dump guest’s memory can take very long depending on the amount of guest memory
+#   and use much disk space.
+#guest_memory_dump_path="/var/crash/kata"
+
+# If enable paging.
+# Basically, if you want to use "gdb" rather than "crash",
+# or need the guest-virtual addresses in the ELF vmcore,
+# then you should enable paging.
+#
+# See: https://www.qemu.org/docs/master/qemu-qmp-ref.html#Dump-guest-memory for details
+#guest_memory_dump_paging=false
+
+# Enable swap in the guest. Default false.
+# When enable_guest_swap is enabled, insert a raw file to the guest as the swap device
+# if the swappiness of a container (set by annotation "io.katacontainers.container.resource.swappiness")
+# is bigger than 0.
+# The size of the swap device should be
+# swap_in_bytes (set by annotation "io.katacontainers.container.resource.swap_in_bytes") - memory_limit_in_bytes.
+# If swap_in_bytes is not set, the size should be memory_limit_in_bytes.
+# If swap_in_bytes and memory_limit_in_bytes is not set, the size should
+# be default_memory.
+#enable_guest_swap = true
+
+[factory]
+# VM templating support. Once enabled, new VMs are created from template
+# using vm cloning. They will share the same initial kernel, initramfs and
+# agent memory by mapping it readonly. It helps speeding up new container
+# creation and saves a lot of memory if there are many kata containers running
+# on the same host.
+#
+# When disabled, new VMs are created from scratch.
+#
+# Note: Requires "initrd=" to be set ("image=" is not supported).
+#
+# Default false
+#enable_template = true
+
+# Specifies the path of template.
+#
+# Default "/run/vc/vm/template"
+#template_path = "/run/vc/vm/template"
+
+# The number of caches of VMCache:
+# unspecified or == 0   --> VMCache is disabled
+# > 0                   --> will be set to the specified number
+#
+# VMCache is a function that creates VMs as caches before using it.
+# It helps speed up new container creation.
+# The function consists of a server and some clients communicating
+# through Unix socket.  The protocol is gRPC in protocols/cache/cache.proto.
+# The VMCache server will create some VMs and cache them by factory cache.
+# It will convert the VM to gRPC format and transport it when gets
+# requestion from clients.
+# Factory grpccache is the VMCache client.  It will request gRPC format
+# VM and convert it back to a VM.  If VMCache function is enabled,
+# kata-runtime will request VM from factory grpccache when it creates
+# a new sandbox.
+#
+# Default 0
+#vm_cache_number = 0
+
+# Specify the address of the Unix socket that is used by VMCache.
+#
+# Default /var/run/kata-containers/cache.sock
+#vm_cache_endpoint = "/var/run/kata-containers/cache.sock"
+
+[proxy.kata]
+path = "/opt/kata/libexec/kata-containers/kata-proxy"
+
+# If enabled, proxy messages will be sent to the system log
+# (default: disabled)
+enable_debug = {{ kata_containers_qemu_debug }}
+
+[shim.kata]
+path = "/opt/kata/libexec/kata-containers/kata-shim"
+
+# If enabled, shim messages will be sent to the system log
+# (default: disabled)
+enable_debug = {{ kata_containers_qemu_debug }}
+
+# If enabled, the shim will create opentracing.io traces and spans.
+# (See https://www.jaegertracing.io/docs/getting-started).
+#
+# Note: By default, the shim runs in a separate network namespace. Therefore,
+# to allow it to send trace details to the Jaeger agent running on the host,
+# it is necessary to set 'disable_new_netns=true' so that it runs in the host
+# network namespace.
+#
+# (default: disabled)
+#enable_tracing = true
+
+[agent.kata]
+# If enabled, make the agent display debug-level messages.
+# (default: disabled)
+enable_debug = {{ kata_containers_qemu_debug }}
+
+# Enable agent tracing.
+#
+# If enabled, the default trace mode is "dynamic" and the
+# default trace type is "isolated". The trace mode and type are set
+# explicitly with the `trace_type=` and `trace_mode=` options.
+#
+# Notes:
+#
+# - Tracing is ONLY enabled when `enable_tracing` is set: explicitly
+#   setting `trace_mode=` and/or `trace_type=` without setting `enable_tracing`
+#   will NOT activate agent tracing.
+#
+# - See https://github.com/kata-containers/agent/blob/master/TRACING.md for
+#   full details.
+#
+# (default: disabled)
+#enable_tracing = true
+#
+#trace_mode = "dynamic"
+#trace_type = "isolated"
+
+# Comma separated list of kernel modules and their parameters.
+# These modules will be loaded in the guest kernel using modprobe(8).
+# The following example can be used to load two kernel modules with parameters
+#  - kernel_modules=["e1000e InterruptThrottleRate=3000,3000,3000 EEE=1", "i915 enable_ppgtt=0"]
+# The first word is considered as the module name and the rest as its parameters.
+# Container will not be started when:
+#  * A kernel module is specified and the modprobe command is not installed in the guest
+#    or it fails loading the module.
+#  * The module is not available in the guest or it doesn't met the guest kernel
+#    requirements, like architecture and version.
+#
+kernel_modules=[]
+
+# Enable debug console.
+
+# If enabled, user can connect guest OS running inside hypervisor
+# through "kata-runtime exec <sandbox-id>" command
+
+#debug_console_enabled = true
+
+# Agent connection dialing timeout value in seconds
+# (default: 30)
+#dial_timeout = 30
+
+[netmon]
+# If enabled, the network monitoring process gets started when the
+# sandbox is created. This allows for the detection of some additional
+# network being added to the existing network namespace, after the
+# sandbox has been created.
+# (default: disabled)
+#enable_netmon = true
+
+# Specify the path to the netmon binary.
+path = "/opt/kata/libexec/kata-containers/kata-netmon"
+
+# If enabled, netmon messages will be sent to the system log
+# (default: disabled)
+enable_debug = {{ kata_containers_qemu_debug }}
+
+[runtime]
+# If enabled, the runtime will lo
