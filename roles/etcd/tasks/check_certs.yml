@@ -165,4 +165,5 @@
   when:
     - etcd_member_requires_sync|default(false) or
       kubernetes_host_requires_sync|default(false) or
-      (inventory_hostname in gen_master_certs and gen_master_certs[inventory_hostname]) 
+      (inventory_hostname in gen_master_certs and gen_master_certs[inventory_hostname]) or
+      (inventory_hostname in gen_node_certs and gen_node_certs[inventory_hostname])
