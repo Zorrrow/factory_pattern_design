@@ -1,0 +1,7 @@
+---
+- name: Master | restart kubelet
+  command: /bin/true
+  notify:
+    - Master | reload systemd
+    - Master | reload kubelet
+   
