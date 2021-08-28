@@ -7,4 +7,5 @@
   register: etcdctl_install_result
   until: etcdctl_install_result.rc == 0
   retries: "{{ etcd_retries }}"
-  delay: "{{ retry_stagger | r
+  delay: "{{ retry_stagger | random + 3 }}"
+  changed_when: false
