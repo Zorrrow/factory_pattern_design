@@ -1,0 +1,17 @@
+---
+- name: Install OIDC certificate
+  copy:
+    content: "{{ kube_oidc_ca_cert | b64decode }}"
+    dest: "{{ kube_oidc_ca_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - kube_oidc_auth
+    - kube_oidc_ca_cert is defined
+
+- name: kubeadm | Check if kubeadm has already run
+  stat:
+    path: "/var/lib/kubelet/config.yaml"
+    get_attributes: no
+    
