@@ -5,4 +5,7 @@ limits:
 - type: {{ limit.type }}
   qps: {{ limit.qps }}
   burst: {{ limit.burst }}
-{% if limit.cache_size 
+{% if limit.cache_size is defined %}
+  cacheSize: {{ limit.cache_size }}
+{% endif %}
+{% endfor %}
