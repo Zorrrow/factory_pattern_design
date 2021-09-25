@@ -1,0 +1,12 @@
+# clusters refers to the remote service.
+clusters:
+- name: webhook-token-authz-cluster
+  cluster:
+    server: {{ kube_webhook_authorization_url }}
+    insecure-skip-tls-verify: {{ kube_webhook_authorization_url_skip_tls_verify }}
+
+# users refers to the API server's webhook configuration.
+users:
+- name: webhook-token-authz-user
+
+# kubeconfig files
