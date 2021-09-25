@@ -9,4 +9,10 @@ clusters:
 users:
 - name: webhook-token-authz-user
 
-# kubeconfig files
+# kubeconfig files require a context. Provide one for the API server.
+current-context: webhook-token-authz
+contexts:
+- context:
+    cluster: webhook-token-authz-cluster
+    user: webhook-token-authz-user
+  name: webhook-token-authz
