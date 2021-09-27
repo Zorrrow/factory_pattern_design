@@ -36,4 +36,17 @@ ExecStart={{ bin_dir }}/kubelet \
 		$KUBELET_PORT \
 		$KUBELET_HOSTNAME \
 		$KUBELET_ARGS \
-	
+		$DOCKER_SOCKET \
+		$KUBELET_NETWORK_PLUGIN \
+		$KUBELET_VOLUME_PLUGIN \
+		$KUBELET_CLOUDPROVIDER
+Restart=always
+RestartSec=10s
+{% if kubelet_systemd_hardening %}
+# Hardening setup
+IPAddressDeny=any
+IPAddressAllow={{ kubelet_secure_addresses }}
+{% endif %}
+
+[Install]
+WantedBy=multi-user.target
