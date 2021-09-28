@@ -1,0 +1,6 @@
+
+---
+required_pkgs:
+  - device-mapper
+  - conntrack-tools
+  - libseccomp2

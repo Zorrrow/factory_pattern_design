@@ -30,4 +30,4 @@
     owner: root
     mode: 0755
   notify: Preinstall | propagate resolvconf to k8s components
-  when: ansible_os_fami
+  when: ansible_os_family == "RedHat"
