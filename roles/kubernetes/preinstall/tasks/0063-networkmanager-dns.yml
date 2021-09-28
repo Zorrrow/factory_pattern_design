@@ -1,0 +1,7 @@
+---
+- name: NetworkManager | Add nameservers to NM configuration
+  ini_file:
+    path: /etc/NetworkManager/conf.d/dns.conf
+    section: global-dns-domain-*
+    option: servers
+ 
