@@ -28,4 +28,14 @@
     get_mime: no
   register: known_tokens
 
-- name: "Check_tokens | Set 'sync_t
+- name: "Check_tokens | Set 'sync_tokens' to true"
+  set_fact:
+    sync_tokens: >-
+      {%- set tokens = {'sync': False} -%}
+      {%- for server in groups['kube_control_plane'] | intersect(ansible_play_batch)
+        if (not hostvars[server].known_tokens.stat.exists) or
+        (hostvars[server].known_tokens.stat.checksum|default('') != known_tokens_master.stat.checksum|default('')) -%}
+        {%- set _ = tokens.update({'sync': True}) -%}
+      {%- endfor -%}
+      {{ tokens.sync }}
+  run_once: true
