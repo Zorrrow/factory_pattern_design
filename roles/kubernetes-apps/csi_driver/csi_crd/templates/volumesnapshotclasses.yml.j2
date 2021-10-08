@@ -86,4 +86,31 @@ spec:
             type: string
           deletionPolicy:
             description: deletionPolicy determines whether a VolumeSnapshotContent created through the VolumeSnapshotClass should be deleted when its bound VolumeSnapshot is deleted. Supported values are "Retain" and "Delete". "Retain" means that the VolumeSnapshotContent and its physical snapshot on underlying storage system are kept. "Delete" means that the VolumeSnapshotContent and its physical snapshot on underlying storage system are deleted. Required.
-           
+            enum:
+            - Delete
+            - Retain
+            type: string
+          driver:
+            description: driver is the name of the storage driver that handles this VolumeSnapshotClass. Required.
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          parameters:
+            additionalProperties:
+              type: string
+            description: parameters is a key-value map with storage driver specific parameters for creating snapshots. These values are opaque to Kubernetes.
+            type: object
+        required:
+        - deletionPolicy
+        - driver
+        type: object
+    served: true
+    storage: false
+    subresources: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
