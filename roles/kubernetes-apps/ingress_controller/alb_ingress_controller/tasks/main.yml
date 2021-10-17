@@ -26,4 +26,11 @@
 - name: ALB Ingress Controller | Apply manifests
   kube:
     name: "{{ item.item.name }}"
-    namespace: "{{ alb_ingress_controller_namespac
+    namespace: "{{ alb_ingress_controller_namespace }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/addons/alb_ingress/{{ item.item.file }}"
+    state: "latest"
+  with_items: "{{ alb_ingress_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
