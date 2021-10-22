@@ -486,4 +486,93 @@ spec:
                                           maximum: 65535
                                           minimum: 1
                                         sectionName:
-                                          description: "SectionName is the name of a section within the target resource. In the following resources, SectionName is interpreted as the following: \n * Gateway: Listener Name. When both Port (experimental) and SectionName are specified, the name and port of the selected listener must match both specified values. \n Implementations MAY choose to support attaching Routes to other resources. If that is the case, they MUST clearly document how SectionName is interpreted. \n When unspecified (empty string), this will reference the entire resource. For the purpose of status, an attachment is considered successful if at least one section in the parent resource accepts it. For example, Gateway listeners can restrict which Routes can attach to them by Route kind, namespace, or hostname. If 1 of 2 Gateway listeners accept attachment from the referencing Route, the Route MUST be considered successfully attached. If no Gateway listeners accept attachment from this Route, the Route MUST be considered detached
+                                          description: "SectionName is the name of a section within the target resource. In the following resources, SectionName is interpreted as the following: \n * Gateway: Listener Name. When both Port (experimental) and SectionName are specified, the name and port of the selected listener must match both specified values. \n Implementations MAY choose to support attaching Routes to other resources. If that is the case, they MUST clearly document how SectionName is interpreted. \n When unspecified (empty string), this will reference the entire resource. For the purpose of status, an attachment is considered successful if at least one section in the parent resource accepts it. For example, Gateway listeners can restrict which Routes can attach to them by Route kind, namespace, or hostname. If 1 of 2 Gateway listeners accept attachment from the referencing Route, the Route MUST be considered successfully attached. If no Gateway listeners accept attachment from this Route, the Route MUST be considered detached from the Gateway. \n Support: Core"
+                                          type: string
+                                          maxLength: 253
+                                          minLength: 1
+                                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                                  serviceType:
+                                    description: Optional service type for Kubernetes solver service. Supported values are NodePort or ClusterIP. If unset, defaults to NodePort.
+                                    type: string
+                              ingress:
+                                description: The ingress based HTTP01 challenge solver will solve challenges by creating or modifying Ingress resources in order to route requests for '/.well-known/acme-challenge/XYZ' to 'challenge solver' pods that are provisioned by cert-manager for each Challenge to be completed.
+                                type: object
+                                properties:
+                                  class:
+                                    description: The ingress class to use when creating Ingress resources to solve ACME challenges that use this challenge solver. Only one of 'class' or 'name' may be specified.
+                                    type: string
+                                  ingressTemplate:
+                                    description: Optional ingress template used to configure the ACME challenge solver ingress used for HTTP01 challenges.
+                                    type: object
+                                    properties:
+                                      metadata:
+                                        description: ObjectMeta overrides for the ingress used to solve HTTP01 challenges. Only the 'labels' and 'annotations' fields may be set. If labels or annotations overlap with in-built values, the values here will override the in-built values.
+                                        type: object
+                                        properties:
+                                          annotations:
+                                            description: Annotations that should be added to the created ACME HTTP01 solver ingress.
+                                            type: object
+                                            additionalProperties:
+                                              type: string
+                                          labels:
+                                            description: Labels that should be added to the created ACME HTTP01 solver ingress.
+                                            type: object
+                                            additionalProperties:
+                                              type: string
+                                  name:
+                                    description: The name of the ingress resource that should have ACME challenge solving routes inserted into it in order to solve HTTP01 challenges. This is typically used in conjunction with ingress controllers like ingress-gce, which maintains a 1:1 mapping between external IPs and ingress resources.
+                                    type: string
+                                  podTemplate:
+                                    description: Optional pod template used to configure the ACME challenge solver pods used for HTTP01 challenges.
+                                    type: object
+                                    properties:
+                                      metadata:
+                                        description: ObjectMeta overrides for the pod used to solve HTTP01 challenges. Only the 'labels' and 'annotations' fields may be set. If labels or annotations overlap with in-built values, the values here will override the in-built values.
+                                        type: object
+                                        properties:
+                                          annotations:
+                                            description: Annotations that should be added to the create ACME HTTP01 solver pods.
+                                            type: object
+                                            additionalProperties:
+                                              type: string
+                                          labels:
+                                            description: Labels that should be added to the created ACME HTTP01 solver pods.
+                                            type: object
+                                            additionalProperties:
+                                              type: string
+                                      spec:
+                                        description: PodSpec defines overrides for the HTTP01 challenge solver pod. Only the 'priorityClassName', 'nodeSelector', 'affinity', 'serviceAccountName' and 'tolerations' fields are supported currently. All other fields will be ignored.
+                                        type: object
+                                        properties:
+                                          affinity:
+                                            description: If specified, the pod's scheduling constraints
+                                            type: object
+                                            properties:
+                                              nodeAffinity:
+                                                description: Describes node affinity scheduling rules for the pod.
+                                                type: object
+                                                properties:
+                                                  preferredDuringSchedulingIgnoredDuringExecution:
+                                                    description: The scheduler will prefer to schedule pods to nodes that satisfy the affinity expressions specified by this field, but it may choose a node that violates one or more of the expressions. The node that is most preferred is the one with the greatest sum of weights, i.e. for each node that meets all of the scheduling requirements (resource request, requiredDuringScheduling affinity expressions, etc.), compute a sum by iterating through the elements of this field and adding "weight" to the sum if the node matches the corresponding matchExpressions; the node(s) with the highest sum are the most preferred.
+                                                    type: array
+                                                    items:
+                                                      description: An empty preferred scheduling term matches all objects with implicit weight 0 (i.e. it's a no-op). A null preferred scheduling term matches no objects (i.e. is also a no-op).
+                                                      type: object
+                                                      required:
+                                                        - preference
+                                                        - weight
+                                                      properties:
+                                                        preference:
+                                                          description: A node selector term, associated with the corresponding weight.
+                                                          type: object
+                                                          properties:
+                                                            matchExpressions:
+                                                              description: A list of node selector requirements by node's labels.
+                                                              type: array
+                                                              items:
+                                                                description: A node selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                                                                type: object
+                                                                required:
+                                                                  - key
+                                                                  - operator
+                   
