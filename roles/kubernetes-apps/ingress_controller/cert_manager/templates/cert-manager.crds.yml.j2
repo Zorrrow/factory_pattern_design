@@ -1009,4 +1009,87 @@ spec:
                                                                 type: string
                                                           x-kubernetes-map-type: atomic
                                                         namespaces:
-                                                          description: namespaces specifies a static list of namespace names that the term applies to. The term is applied to the union of the namespaces listed in this field and the ones s
+                                                          description: namespaces specifies a static list of namespace names that the term applies to. The term is applied to the union of the namespaces listed in this field and the ones selected by namespaceSelector. null or empty namespaces list and null namespaceSelector means "this pod's namespace".
+                                                          type: array
+                                                          items:
+                                                            type: string
+                                                        topologyKey:
+                                                          description: This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching the labelSelector in the specified namespaces, where co-located is defined as running on a node whose value of the label with key topologyKey matches that of any node on which any of the selected pods is running. Empty topologyKey is not allowed.
+                                                          type: string
+                                          nodeSelector:
+                                            description: 'NodeSelector is a selector which must be true for the pod to fit on a node. Selector which must match a node''s labels for the pod to be scheduled on that node. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/'
+                                            type: object
+                                            additionalProperties:
+                                              type: string
+                                          priorityClassName:
+                                            description: If specified, the pod's priorityClassName.
+                                            type: string
+                                          serviceAccountName:
+                                            description: If specified, the pod's service account
+                                            type: string
+                                          tolerations:
+                                            description: If specified, the pod's tolerations.
+                                            type: array
+                                            items:
+                                              description: The pod this Toleration is attached to tolerates any taint that matches the triple <key,value,effect> using the matching operator <operator>.
+                                              type: object
+                                              properties:
+                                                effect:
+                                                  description: Effect indicates the taint effect to match. Empty means match all taint effects. When specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute.
+                                                  type: string
+                                                key:
+                                                  description: Key is the taint key that the toleration applies to. Empty means match all taint keys. If the key is empty, operator must be Exists; this combination means to match all values and all keys.
+                                                  type: string
+                                                operator:
+                                                  description: Operator represents a key's relationship to the value. Valid operators are Exists and Equal. Defaults to Equal. Exists is equivalent to wildcard for value, so that a pod can tolerate all taints of a particular category.
+                                                  type: string
+                                                tolerationSeconds:
+                                                  description: TolerationSeconds represents the period of time the toleration (which must be of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default, it is not set, which means tolerate the taint forever (do not evict). Zero and negative values will be treated as 0 (evict immediately) by the system.
+                                                  type: integer
+                                                  format: int64
+                                                value:
+                                                  description: Value is the taint value the toleration matches to. If the operator is Exists, the value should be empty, otherwise just a regular string.
+                                                  type: string
+                                  serviceType:
+                                    description: Optional service type for Kubernetes solver service. Supported values are NodePort or ClusterIP. If unset, defaults to NodePort.
+                                    type: string
+                          selector:
+                            description: Selector selects a set of DNSNames on the Certificate resource that should be solved using this challenge solver. If not specified, the solver will be treated as the 'default' solver with the lowest priority, i.e. if any other solver has a more specific match, it will be used instead.
+                            type: object
+                            properties:
+                              dnsNames:
+                                description: List of DNSNames that this solver will be used to solve. If specified and a match is found, a dnsNames selector will take precedence over a dnsZones selector. If multiple solvers match with the same dnsNames value, the solver with the most matching labels in matchLabels will be selected. If neither has more matches, the solver defined earlier in the list will be selected.
+                                type: array
+                                items:
+                                  type: string
+                              dnsZones:
+                                description: List of DNSZones that this solver will be used to solve. The most specific DNS zone match specified here will take precedence over other DNS zone matches, so a solver specifying sys.example.com will be selected over one specifying example.com for the domain www.sys.example.com. If multiple solvers match with the same dnsZones value, the solver with the most matching labels in matchLabels will be selected. If neither has more matches, the solver defined earlier in the list will be selected.
+                                type: array
+                                items:
+                                  type: string
+                              matchLabels:
+                                description: A label selector that is used to refine the set of certificate's that this challenge solver will apply to.
+                                type: object
+                                additionalProperties:
+                                  type: string
+                ca:
+                  description: CA configures this issuer to sign certificates using a signing CA keypair stored in a Secret resource. This is used to build internal PKIs that are managed by cert-manager.
+                  type: object
+                  required:
+                    - secretName
+                  properties:
+                    crlDistributionPoints:
+                      description: The CRL distribution points is an X.509 v3 certificate extension which identifies the location of the CRL from which the revocation of this certificate can be checked. If not set, certificates will be issued without distribution points set.
+                      type: array
+                      items:
+                        type: string
+                    ocspServers:
+                      description: The OCSP server list is an X.509 v3 extension that defines a list of URLs of OCSP responders. The OCSP responders can be queried for the revocation status of an issued certificate. If not set, the certificate will be issued with no OCSP servers set. For example, an OCSP server URL could be "http://ocsp.int-x3.letsencrypt.org".
+                      type: array
+                      items:
+                        type: string
+                    secretName:
+                      description: SecretName is the name of the secret used to sign Certificates issued by this Issuer.
+                      type: string
+                selfSigned:
+         
