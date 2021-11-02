@@ -1201,4 +1201,161 @@ spec:
                       description: 'Server is the connection address for the Vault server, e.g: "https://vault.example.com:8200".'
                       type: string
                 venafi:
-                  description: Venafi configures this issuer to sign certificates using a Venafi TPP or Venaf
+                  description: Venafi configures this issuer to sign certificates using a Venafi TPP or Venafi Cloud policy zone.
+                  type: object
+                  required:
+                    - zone
+                  properties:
+                    cloud:
+                      description: Cloud specifies the Venafi cloud configuration settings. Only one of TPP or Cloud may be specified.
+                      type: object
+                      required:
+                        - apiTokenSecretRef
+                      properties:
+                        apiTokenSecretRef:
+                          description: APITokenSecretRef is a secret key selector for the Venafi Cloud API token.
+                          type: object
+                          required:
+                            - name
+                          properties:
+                            key:
+                              description: The key of the entry in the Secret resource's `data` field to be used. Some instances of this field may be defaulted, in others it may be required.
+                              type: string
+                            name:
+                              description: 'Name of the resource being referred to. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                              type: string
+                        url:
+                          description: URL is the base URL for Venafi Cloud. Defaults to "https://api.venafi.cloud/v1".
+                          type: string
+                    tpp:
+                      description: TPP specifies Trust Protection Platform configuration settings. Only one of TPP or Cloud may be specified.
+                      type: object
+                      required:
+                        - credentialsRef
+                        - url
+                      properties:
+                        caBundle:
+                          description: Base64-encoded bundle of PEM CAs which will be used to validate the certificate chain presented by the TPP server. Only used if using HTTPS; ignored for HTTP. If undefined, the certificate bundle in the cert-manager controller container is used to validate the chain.
+                          type: string
+                          format: byte
+                        credentialsRef:
+                          description: CredentialsRef is a reference to a Secret containing the username and password for the TPP server. The secret must contain two keys, 'username' and 'password'.
+                          type: object
+                          required:
+                            - name
+                          properties:
+                            name:
+                              description: 'Name of the resource being referred to. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                              type: string
+                        url:
+                          description: 'URL is the base URL for the vedsdk endpoint of the Venafi TPP instance, for example: "https://tpp.example.com/vedsdk".'
+                          type: string
+                    zone:
+                      description: Zone is the Venafi Policy Zone to use for this issuer. All requests made to the Venafi platform will be restricted by the named zone policy. This field is required.
+                      type: string
+            status:
+              description: Status of the ClusterIssuer. This is set and managed automatically.
+              type: object
+              properties:
+                acme:
+                  description: ACME specific status options. This field should only be set if the Issuer is configured to use an ACME server to issue certificates.
+                  type: object
+                  properties:
+                    lastRegisteredEmail:
+                      description: LastRegisteredEmail is the email associated with the latest registered ACME account, in order to track changes made to registered account associated with the  Issuer
+                      type: string
+                    uri:
+                      description: URI is the unique account identifier, which can also be used to retrieve account details from the CA
+                      type: string
+                conditions:
+                  description: List of status conditions to indicate the status of a CertificateRequest. Known condition types are `Ready`.
+                  type: array
+                  items:
+                    description: IssuerCondition contains condition information for an Issuer.
+                    type: object
+                    required:
+                      - status
+                      - type
+                    properties:
+                      lastTransitionTime:
+                        description: LastTransitionTime is the timestamp corresponding to the last status change of this condition.
+                        type: string
+                        format: date-time
+                      message:
+                        description: Message is a human readable description of the details of the last transition, complementing reason.
+                        type: string
+                      observedGeneration:
+                        description: If set, this represents the .metadata.generation that the condition was set based upon. For instance, if .metadata.generation is currently 12, but the .status.condition[x].observedGeneration is 9, the condition is out of date with respect to the current state of the Issuer.
+                        type: integer
+                        format: int64
+                      reason:
+                        description: Reason is a brief machine readable explanation for the condition's last transition.
+                        type: string
+                      status:
+                        description: Status of the condition, one of (`True`, `False`, `Unknown`).
+                        type: string
+                        enum:
+                          - "True"
+                          - "False"
+                          - Unknown
+                      type:
+                        description: Type of the condition, known values are (`Ready`).
+                        type: string
+                  x-kubernetes-list-map-keys:
+                    - type
+                  x-kubernetes-list-type: map
+      served: true
+      storage: true
+---
+# Source: cert-manager/deploy/crds/crd-challenges.yaml
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: challenges.acme.cert-manager.io
+  labels:
+    app: 'cert-manager'
+    app.kubernetes.io/name: 'cert-manager'
+    app.kubernetes.io/instance: 'cert-manager'
+    # Generated labels
+    app.kubernetes.io/version: "{{ cert_manager_version }}"
+spec:
+  group: acme.cert-manager.io
+  names:
+    kind: Challenge
+    listKind: ChallengeList
+    plural: challenges
+    singular: challenge
+    categories:
+      - cert-manager
+      - cert-manager-acme
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .status.state
+          name: State
+          type: string
+        - jsonPath: .spec.dnsName
+          name: Domain
+          type: string
+        - jsonPath: .status.reason
+          name: Reason
+          priority: 1
+          type: string
+        - description: CreationTimestamp is a timestamp representing the server time when this object was created. It is not guaranteed to be set in happens-before order across separate operations. Clients may not set this value. It is represented in RFC3339 form and is in UTC.
+          jsonPath: .metadata.creationTimestamp
+          name: Age
+          type: date
+      name: v1
+      schema:
+        openAPIV3Schema:
+          description: Challenge is a type to represent a Challenge request with an ACME server
+          type: object
+          required:
+            - metadata
+            - spec
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object repr
