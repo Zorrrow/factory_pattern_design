@@ -1611,4 +1611,96 @@ spec:
                             - nameserver
                           properties:
                             nameserver:
-                              description: The IP address or hostname of an authoritative DNS server supporting RFC2136 in the for
+                              description: The IP address or hostname of an authoritative DNS server supporting RFC2136 in the form host:port. If the host is an IPv6 address it must be enclosed in square brackets (e.g [2001:db8::1]) ; port is optional. This field is required.
+                              type: string
+                            tsigAlgorithm:
+                              description: 'The TSIG Algorithm configured in the DNS supporting RFC2136. Used only when ``tsigSecretSecretRef`` and ``tsigKeyName`` are defined. Supported values are (case-insensitive): ``HMACMD5`` (default), ``HMACSHA1``, ``HMACSHA256`` or ``HMACSHA512``.'
+                              type: string
+                            tsigKeyName:
+                              description: The TSIG Key name configured in the DNS. If ``tsigSecretSecretRef`` is defined, this field is required.
+                              type: string
+                            tsigSecretSecretRef:
+                              description: The name of the secret containing the TSIG value. If ``tsigKeyName`` is defined, this field is required.
+                              type: object
+                              required:
+                                - name
+                              properties:
+                                key:
+                                  description: The key of the entry in the Secret resource's `data` field to be used. Some instances of this field may be defaulted, in others it may be required.
+                                  type: string
+                                name:
+                                  description: 'Name of the resource being referred to. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                                  type: string
+                        route53:
+                          description: Use the AWS Route53 API to manage DNS01 challenge records.
+                          type: object
+                          required:
+                            - region
+                          properties:
+                            accessKeyID:
+                              description: 'The AccessKeyID is used for authentication. Cannot be set when SecretAccessKeyID is set. If neither the Access Key nor Key ID are set, we fall-back to using env vars, shared credentials file or AWS Instance metadata, see: https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html#specifying-credentials'
+                              type: string
+                            accessKeyIDSecretRef:
+                              description: 'The SecretAccessKey is used for authentication. If set, pull the AWS access key ID from a key within a Kubernetes Secret. Cannot be set when AccessKeyID is set. If neither the Access Key nor Key ID are set, we fall-back to using env vars, shared credentials file or AWS Instance metadata, see: https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html#specifying-credentials'
+                              type: object
+                              required:
+                                - name
+                              properties:
+                                key:
+                                  description: The key of the entry in the Secret resource's `data` field to be used. Some instances of this field may be defaulted, in others it may be required.
+                                  type: string
+                                name:
+                                  description: 'Name of the resource being referred to. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                                  type: string
+                            hostedZoneID:
+                              description: If set, the provider will manage only this zone in Route53 and will not do an lookup using the route53:ListHostedZonesByName api call.
+                              type: string
+                            region:
+                              description: Always set the region when using AccessKeyID and SecretAccessKey
+                              type: string
+                            role:
+                              description: Role is a Role ARN which the Route53 provider will assume using either the explicit credentials AccessKeyID/SecretAccessKey or the inferred credentials from environment variables, shared credentials file or AWS Instance metadata
+                              type: string
+                            secretAccessKeySecretRef:
+                              description: 'The SecretAccessKey is used for authentication. If neither the Access Key nor Key ID are set, we fall-back to using env vars, shared credentials file or AWS Instance metadata, see: https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html#specifying-credentials'
+                              type: object
+                              required:
+                                - name
+                              properties:
+                                key:
+                                  description: The key of the entry in the Secret resource's `data` field to be used. Some instances of this field may be defaulted, in others it may be required.
+                                  type: string
+                                name:
+                                  description: 'Name of the resource being referred to. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                                  type: string
+                        webhook:
+                          description: Configure an external webhook based DNS01 challenge solver to manage DNS01 challenge records.
+                          type: object
+                          required:
+                            - groupName
+                            - solverName
+                          properties:
+                            config:
+                              description: Additional configuration that should be passed to the webhook apiserver when challenges are processed. This can contain arbitrary JSON data. Secret values should not be specified in this stanza. If secret values are needed (e.g. credentials for a DNS service), you should use a SecretKeySelector to reference a Secret resource. For details on the schema of this field, consult the webhook provider implementation's documentation.
+                              x-kubernetes-preserve-unknown-fields: true
+                            groupName:
+                              description: The API group name that should be used when POSTing ChallengePayload resources to the webhook apiserver. This should be the same as the GroupName specified in the webhook provider implementation.
+                              type: string
+                            solverName:
+                              description: The name of the solver to use, as defined in the webhook provider implementation. This will typically be the name of the provider, e.g. 'cloudflare'.
+                              type: string
+                    http01:
+                      description: Configures cert-manager to attempt to complete authorizations by performing the HTTP01 challenge flow. It is not possible to obtain certificates for wildcard domain names (e.g. `*.example.com`) using the HTTP01 challenge mechanism.
+                      type: object
+                      properties:
+                        gatewayHTTPRoute:
+                          description: The Gateway API is a sig-network community API that models service networking in Kubernetes (https://gateway-api.sigs.k8s.io/). The Gateway solver will create HTTPRoutes with the specified labels in the same namespace as the challenge. This solver is experimental, and fields / behaviour may change in the future.
+                          type: object
+                          properties:
+                            labels:
+                              description: Custom labels that will be applied to HTTPRoutes created by cert-manager while solving HTTP-01 challenges.
+                              type: object
+                              additionalProperties:
+                                type: string
+                            parentRefs:
+                              description: 'When solving an HTTP-01 challenge, cert-manager creates an HTTPRoute. cert-manager needs to know which parentRefs should be used when creating the HTTPRoute. Usua
