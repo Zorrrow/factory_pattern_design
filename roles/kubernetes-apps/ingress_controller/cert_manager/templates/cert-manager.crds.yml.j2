@@ -1486,4 +1486,129 @@ spec:
                               type: string
                             clientSecretSecretRef:
                               description: if both this and ClientID are left unset MSI will be used
-                           
+                              type: object
+                              required:
+                                - name
+                              properties:
+                                key:
+                                  description: The key of the entry in the Secret resource's `data` field to be used. Some instances of this field may be defaulted, in others it may be required.
+                                  type: string
+                                name:
+                                  description: 'Name of the resource being referred to. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                                  type: string
+                            environment:
+                              description: name of the Azure environment (default AzurePublicCloud)
+                              type: string
+                              enum:
+                                - AzurePublicCloud
+                                - AzureChinaCloud
+                                - AzureGermanCloud
+                                - AzureUSGovernmentCloud
+                            hostedZoneName:
+                              description: name of the DNS zone that should be used
+                              type: string
+                            managedIdentity:
+                              description: managed identity configuration, can not be used at the same time as clientID, clientSecretSecretRef or tenantID
+                              type: object
+                              properties:
+                                clientID:
+                                  description: client ID of the managed identity, can not be used at the same time as resourceID
+                                  type: string
+                                resourceID:
+                                  description: resource ID of the managed identity, can not be used at the same time as clientID
+                                  type: string
+                            resourceGroupName:
+                              description: resource group the DNS zone is located in
+                              type: string
+                            subscriptionID:
+                              description: ID of the Azure subscription
+                              type: string
+                            tenantID:
+                              description: when specifying ClientID and ClientSecret then this field is also needed
+                              type: string
+                        cloudDNS:
+                          description: Use the Google Cloud DNS API to manage DNS01 challenge records.
+                          type: object
+                          required:
+                            - project
+                          properties:
+                            hostedZoneName:
+                              description: HostedZoneName is an optional field that tells cert-manager in which Cloud DNS zone the challenge record has to be created. If left empty cert-manager will automatically choose a zone.
+                              type: string
+                            project:
+                              type: string
+                            serviceAccountSecretRef:
+                              description: A reference to a specific 'key' within a Secret resource. In some instances, `key` is a required field.
+                              type: object
+                              required:
+                                - name
+                              properties:
+                                key:
+                                  description: The key of the entry in the Secret resource's `data` field to be used. Some instances of this field may be defaulted, in others it may be required.
+                                  type: string
+                                name:
+                                  description: 'Name of the resource being referred to. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                                  type: string
+                        cloudflare:
+                          description: Use the Cloudflare API to manage DNS01 challenge records.
+                          type: object
+                          properties:
+                            apiKeySecretRef:
+                              description: 'API key to use to authenticate with Cloudflare. Note: using an API token to authenticate is now the recommended method as it allows greater control of permissions.'
+                              type: object
+                              required:
+                                - name
+                              properties:
+                                key:
+                                  description: The key of the entry in the Secret resource's `data` field to be used. Some instances of this field may be defaulted, in others it may be required.
+                                  type: string
+                                name:
+                                  description: 'Name of the resource being referred to. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                                  type: string
+                            apiTokenSecretRef:
+                              description: API token used to authenticate with Cloudflare.
+                              type: object
+                              required:
+                                - name
+                              properties:
+                                key:
+                                  description: The key of the entry in the Secret resource's `data` field to be used. Some instances of this field may be defaulted, in others it may be required.
+                                  type: string
+                                name:
+                                  description: 'Name of the resource being referred to. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                                  type: string
+                            email:
+                              description: Email of the account, only required when using API key based authentication.
+                              type: string
+                        cnameStrategy:
+                          description: CNAMEStrategy configures how the DNS01 provider should handle CNAME records when found in DNS zones.
+                          type: string
+                          enum:
+                            - None
+                            - Follow
+                        digitalocean:
+                          description: Use the DigitalOcean DNS API to manage DNS01 challenge records.
+                          type: object
+                          required:
+                            - tokenSecretRef
+                          properties:
+                            tokenSecretRef:
+                              description: A reference to a specific 'key' within a Secret resource. In some instances, `key` is a required field.
+                              type: object
+                              required:
+                                - name
+                              properties:
+                                key:
+                                  description: The key of the entry in the Secret resource's `data` field to be used. Some instances of this field may be defaulted, in others it may be required.
+                                  type: string
+                                name:
+                                  description: 'Name of the resource being referred to. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                                  type: string
+                        rfc2136:
+                          description: Use RFC2136 ("Dynamic Updates in the Domain Name System") (https://datatracker.ietf.org/doc/rfc2136/) to manage DNS01 challenge records.
+                          type: object
+                          required:
+                            - nameserver
+                          properties:
+                            nameserver:
+                              description: The IP address or hostname of an authoritative DNS server supporting RFC2136 in the for
