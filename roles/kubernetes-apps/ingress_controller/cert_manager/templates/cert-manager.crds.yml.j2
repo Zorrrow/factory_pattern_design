@@ -2319,4 +2319,150 @@ spec:
                           items:
                             type: string
                         dnsZones:
-                          description: List of DNSZones that this solver will be used to solve. The most specific DNS zone match specified here will take preceden
+                          description: List of DNSZones that this solver will be used to solve. The most specific DNS zone match specified here will take precedence over other DNS zone matches, so a solver specifying sys.example.com will be selected over one specifying example.com for the domain www.sys.example.com. If multiple solvers match with the same dnsZones value, the solver with the most matching labels in matchLabels will be selected. If neither has more matches, the solver defined earlier in the list will be selected.
+                          type: array
+                          items:
+                            type: string
+                        matchLabels:
+                          description: A label selector that is used to refine the set of certificate's that this challenge solver will apply to.
+                          type: object
+                          additionalProperties:
+                            type: string
+                token:
+                  description: The ACME challenge token for this challenge. This is the raw value returned from the ACME server.
+                  type: string
+                type:
+                  description: The type of ACME challenge this resource represents. One of "HTTP-01" or "DNS-01".
+                  type: string
+                  enum:
+                    - HTTP-01
+                    - DNS-01
+                url:
+                  description: The URL of the ACME Challenge resource for this challenge. This can be used to lookup details about the status of this challenge.
+                  type: string
+                wildcard:
+                  description: wildcard will be true if this challenge is for a wildcard identifier, for example '*.example.com'.
+                  type: boolean
+            status:
+              type: object
+              properties:
+                presented:
+                  description: presented will be set to true if the challenge values for this challenge are currently 'presented'. This *does not* imply the self check is passing. Only that the values have been 'submitted' for the appropriate challenge mechanism (i.e. the DNS01 TXT record has been presented, or the HTTP01 configuration has been configured).
+                  type: boolean
+                processing:
+                  description: Used to denote whether this challenge should be processed or not. This field will only be set to true by the 'scheduling' component. It will only be set to false by the 'challenges' controller, after the challenge has reached a final state or timed out. If this field is set to false, the challenge controller will not take any more action.
+                  type: boolean
+                reason:
+                  description: Contains human readable information on why the Challenge is in the current state.
+                  type: string
+                state:
+                  description: Contains the current 'state' of the challenge. If not set, the state of the challenge is unknown.
+                  type: string
+                  enum:
+                    - valid
+                    - ready
+                    - pending
+                    - processing
+                    - invalid
+                    - expired
+                    - errored
+      served: true
+      storage: true
+      subresources:
+        status: {}
+---
+# Source: cert-manager/deploy/crds/crd-certificaterequests.yaml
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: certificaterequests.cert-manager.io
+  labels:
+    app: 'cert-manager'
+    app.kubernetes.io/name: 'cert-manager'
+    app.kubernetes.io/instance: 'cert-manager'
+    # Generated labels
+    app.kubernetes.io/version: "{{ cert_manager_version }}"
+spec:
+  group: cert-manager.io
+  names:
+    kind: CertificateRequest
+    listKind: CertificateRequestList
+    plural: certificaterequests
+    shortNames:
+      - cr
+      - crs
+    singular: certificaterequest
+    categories:
+      - cert-manager
+  scope: Namespaced
+  versions:
+    - name: v1
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - jsonPath: .status.conditions[?(@.type=="Approved")].status
+          name: Approved
+          type: string
+        - jsonPath: .status.conditions[?(@.type=="Denied")].status
+          name: Denied
+          type: string
+        - jsonPath: .status.conditions[?(@.type=="Ready")].status
+          name: Ready
+          type: string
+        - jsonPath: .spec.issuerRef.name
+          name: Issuer
+          type: string
+        - jsonPath: .spec.username
+          name: Requestor
+          type: string
+        - jsonPath: .status.conditions[?(@.type=="Ready")].message
+          name: Status
+          priority: 1
+          type: string
+        - jsonPath: .metadata.creationTimestamp
+          description: CreationTimestamp is a timestamp representing the server time when this object was created. It is not guaranteed to be set in happens-before order across separate operations. Clients may not set this value. It is represented in RFC3339 form and is in UTC.
+          name: Age
+          type: date
+      schema:
+        openAPIV3Schema:
+          description: "A CertificateRequest is used to request a signed certificate from one of the configured issuers. \n All fields within the CertificateRequest's `spec` are immutable after creation. A CertificateRequest will either succeed or fail, as denoted by its `status.state` field. \n A CertificateRequest is a one-shot resource, meaning it represents a single point in time request for a certificate and cannot be re-used."
+          type: object
+          required:
+            - spec
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: Desired state of the CertificateRequest resource.
+              type: object
+              required:
+                - issuerRef
+                - request
+              properties:
+                duration:
+                  description: The requested 'duration' (i.e. lifetime) of the Certificate. This option may be ignored/overridden by some issuer types.
+                  type: string
+                extra:
+                  description: Extra contains extra attributes of the user that created the CertificateRequest. Populated by the cert-manager webhook on creation and immutable.
+                  type: object
+                  additionalProperties:
+                    type: array
+                    items:
+                      type: string
+                groups:
+                  description: Groups contains group membership of the user that created the CertificateRequest. Populated by the cert-manager webhook on creation and immutable.
+                  type: array
+                  items:
+                    type: string
+                  x-kubernetes-list-type: atomic
+                isCA:
+                  description: IsCA will request to mark the certificate as valid for certificate signing when submitting to the issuer. This will automatically add the `cert sign` usage to the list of `usages`.
+                  type: boolean
+                issuerRef:
+                  description: IssuerRef is a reference to the issuer for this CertificateRequest.  If the `kind` field is not set, or set to `Issuer`, an Issuer resource with the given name in the same namespace as the CertificateRequest will be used.  If the `kind` field is set to `ClusterIssuer`, a ClusterIssuer with the provided name will be used. The `name` field in this sta
