@@ -3817,4 +3817,156 @@ spec:
               type: object
               properties:
                 acme:
-                  description: ACME specific status options. This field shou
+                  description: ACME specific status options. This field should only be set if the Issuer is configured to use an ACME server to issue certificates.
+                  type: object
+                  properties:
+                    lastRegisteredEmail:
+                      description: LastRegisteredEmail is the email associated with the latest registered ACME account, in order to track changes made to registered account associated with the  Issuer
+                      type: string
+                    uri:
+                      description: URI is the unique account identifier, which can also be used to retrieve account details from the CA
+                      type: string
+                conditions:
+                  description: List of status conditions to indicate the status of a CertificateRequest. Known condition types are `Ready`.
+                  type: array
+                  items:
+                    description: IssuerCondition contains condition information for an Issuer.
+                    type: object
+                    required:
+                      - status
+                      - type
+                    properties:
+                      lastTransitionTime:
+                        description: LastTransitionTime is the timestamp corresponding to the last status change of this condition.
+                        type: string
+                        format: date-time
+                      message:
+                        description: Message is a human readable description of the details of the last transition, complementing reason.
+                        type: string
+                      observedGeneration:
+                        description: If set, this represents the .metadata.generation that the condition was set based upon. For instance, if .metadata.generation is currently 12, but the .status.condition[x].observedGeneration is 9, the condition is out of date with respect to the current state of the Issuer.
+                        type: integer
+                        format: int64
+                      reason:
+                        description: Reason is a brief machine readable explanation for the condition's last transition.
+                        type: string
+                      status:
+                        description: Status of the condition, one of (`True`, `False`, `Unknown`).
+                        type: string
+                        enum:
+                          - "True"
+                          - "False"
+                          - Unknown
+                      type:
+                        description: Type of the condition, known values are (`Ready`).
+                        type: string
+                  x-kubernetes-list-map-keys:
+                    - type
+                  x-kubernetes-list-type: map
+      served: true
+      storage: true
+---
+# Source: cert-manager/deploy/crds/crd-certificates.yaml
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: certificates.cert-manager.io
+  labels:
+    app: 'cert-manager'
+    app.kubernetes.io/name: 'cert-manager'
+    app.kubernetes.io/instance: 'cert-manager'
+    # Generated labels
+    app.kubernetes.io/version: "{{ cert_manager_version }}"
+spec:
+  group: cert-manager.io
+  names:
+    kind: Certificate
+    listKind: CertificateList
+    plural: certificates
+    shortNames:
+      - cert
+      - certs
+    singular: certificate
+    categories:
+      - cert-manager
+  scope: Namespaced
+  versions:
+    - name: v1
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - jsonPath: .status.conditions[?(@.type=="Ready")].status
+          name: Ready
+          type: string
+        - jsonPath: .spec.secretName
+          name: Secret
+          type: string
+        - jsonPath: .spec.issuerRef.name
+          name: Issuer
+          priority: 1
+          type: string
+        - jsonPath: .status.conditions[?(@.type=="Ready")].message
+          name: Status
+          priority: 1
+          type: string
+        - jsonPath: .metadata.creationTimestamp
+          description: CreationTimestamp is a timestamp representing the server time when this object was created. It is not guaranteed to be set in happens-before order across separate operations. Clients may not set this value. It is represented in RFC3339 form and is in UTC.
+          name: Age
+          type: date
+      schema:
+        openAPIV3Schema:
+          description: "A Certificate resource should be created to ensure an up to date and signed x509 certificate is stored in the Kubernetes Secret resource named in `spec.secretName`. \n The stored certificate will be renewed before it expires (as configured by `spec.renewBefore`)."
+          type: object
+          required:
+            - spec
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: Desired state of the Certificate resource.
+              type: object
+              required:
+                - issuerRef
+                - secretName
+              properties:
+                additionalOutputFormats:
+                  description: AdditionalOutputFormats defines extra output formats of the private key and signed certificate chain to be written to this Certificate's target Secret. This is an Alpha Feature and is only enabled with the `--feature-gates=AdditionalCertificateOutputFormats=true` option on both the controller and webhook components.
+                  type: array
+                  items:
+                    description: CertificateAdditionalOutputFormat defines an additional output format of a Certificate resource. These contain supplementary data formats of the signed certificate chain and paired private key.
+                    type: object
+                    required:
+                      - type
+                    properties:
+                      type:
+                        description: Type is the name of the format type that should be written to the Certificate's target Secret.
+                        type: string
+                        enum:
+                          - DER
+                          - CombinedPEM
+                commonName:
+                  description: 'CommonName is a common name to be used on the Certificate. The CommonName should have a length of 64 characters or fewer to avoid generating invalid CSRs. This value is ignored by TLS clients when any subject alt name is set. This is x509 behaviour: https://tools.ietf.org/html/rfc6125#section-6.4.4'
+                  type: string
+                dnsNames:
+                  description: DNSNames is a list of DNS subjectAltNames to be set on the Certificate.
+                  type: array
+                  items:
+                    type: string
+                duration:
+                  description: The requested 'duration' (i.e. lifetime) of the Certificate. This option may be ignored/overridden by some issuer types. If unset this defaults to 90 days. Certificate will be renewed either 2/3 through its duration or `renewBefore` period before its expiry, whichever is later. Minimum accepted duration is 1 hour. Value must be in units accepted by Go time.ParseDuration https://golang.org/pkg/time/#ParseDuration
+                  type: string
+                emailAddresses:
+                  description: EmailAddresses is a list of email subjectAltNames to be set on the Certificate.
+                  type: array
+                  items:
+                    type: string
+                encodeUsagesInRequest:
+                  description: EncodeUsagesInRequest controls whether key usages should be present in the CertificateRequest
+                  type: boolean
+          
