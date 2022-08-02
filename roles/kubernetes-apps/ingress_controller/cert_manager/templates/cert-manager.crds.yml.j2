@@ -3969,4 +3969,103 @@ spec:
                 encodeUsagesInRequest:
                   description: EncodeUsagesInRequest controls whether key usages should be present in the CertificateRequest
                   type: boolean
-          
+                ipAddresses:
+                  description: IPAddresses is a list of IP address subjectAltNames to be set on the Certificate.
+                  type: array
+                  items:
+                    type: string
+                isCA:
+                  description: IsCA will mark this Certificate as valid for certificate signing. This will automatically add the `cert sign` usage to the list of `usages`.
+                  type: boolean
+                issuerRef:
+                  description: IssuerRef is a reference to the issuer for this certificate. If the `kind` field is not set, or set to `Issuer`, an Issuer resource with the given name in the same namespace as the Certificate will be used. If the `kind` field is set to `ClusterIssuer`, a ClusterIssuer with the provided name will be used. The `name` field in this stanza is required at all times.
+                  type: object
+                  required:
+                    - name
+                  properties:
+                    group:
+                      description: Group of the resource being referred to.
+                      type: string
+                    kind:
+                      description: Kind of the resource being referred to.
+                      type: string
+                    name:
+                      description: Name of the resource being referred to.
+                      type: string
+                keystores:
+                  description: Keystores configures additional keystore output formats stored in the `secretName` Secret resource.
+                  type: object
+                  properties:
+                    jks:
+                      description: JKS configures options for storing a JKS keystore in the `spec.secretName` Secret resource.
+                      type: object
+                      required:
+                        - create
+                        - passwordSecretRef
+                      properties:
+                        create:
+                          description: Create enables JKS keystore creation for the Certificate. If true, a file named `keystore.jks` will be created in the target Secret resource, encrypted using the password stored in `passwordSecretRef`. The keystore file will be updated immediately. A file named `truststore.jks` will also be created in the target Secret resource, encrypted using the password stored in `passwordSecretRef` containing the issuing Certificate Authority
+                          type: boolean
+                        passwordSecretRef:
+                          description: PasswordSecretRef is a reference to a key in a Secret resource containing the password used to encrypt the JKS keystore.
+                          type: object
+                          required:
+                            - name
+                          properties:
+                            key:
+                              description: The key of the entry in the Secret resource's `data` field to be used. Some instances of this field may be defaulted, in others it may be required.
+                              type: string
+                            name:
+                              description: 'Name of the resource being referred to. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                              type: string
+                    pkcs12:
+                      description: PKCS12 configures options for storing a PKCS12 keystore in the `spec.secretName` Secret resource.
+                      type: object
+                      required:
+                        - create
+                        - passwordSecretRef
+                      properties:
+                        create:
+                          description: Create enables PKCS12 keystore creation for the Certificate. If true, a file named `keystore.p12` will be created in the target Secret resource, encrypted using the password stored in `passwordSecretRef`. The keystore file will be updated immediately. A file named `truststore.p12` will also be created in the target Secret resource, encrypted using the password stored in `passwordSecretRef` containing the issuing Certificate Authority
+                          type: boolean
+                        passwordSecretRef:
+                          description: PasswordSecretRef is a reference to a key in a Secret resource containing the password used to encrypt the PKCS12 keystore.
+                          type: object
+                          required:
+                            - name
+                          properties:
+                            key:
+                              description: The key of the entry in the Secret resource's `data` field to be used. Some instances of this field may be defaulted, in others it may be required.
+                              type: string
+                            name:
+                              description: 'Name of the resource being referred to. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                              type: string
+                literalSubject:
+                  description: LiteralSubject is an LDAP formatted string that represents the [X.509 Subject field](https://datatracker.ietf.org/doc/html/rfc5280#section-4.1.2.6). Use this *instead* of the Subject field if you need to ensure the correct ordering of the RDN sequence, such as when issuing certs for LDAP authentication. See https://github.com/cert-manager/cert-manager/issues/3203, https://github.com/cert-manager/cert-manager/issues/4424. This field is alpha level and is only supported by cert-manager installations where LiteralCertificateSubject feature gate is enabled on both cert-manager controller and webhook.
+                  type: string
+                privateKey:
+                  description: Options to control private keys used for the Certificate.
+                  type: object
+                  properties:
+                    algorithm:
+                      description: Algorithm is the private key algorithm of the corresponding private key for this certificate. If provided, allowed values are either `RSA`,`Ed25519` or `ECDSA` If `algorithm` is specified and `size` is not provided, key size of 256 will be used for `ECDSA` key algorithm and key size of 2048 will be used for `RSA` key algorithm. key size is ignored when using the `Ed25519` key algorithm.
+                      type: string
+                      enum:
+                        - RSA
+                        - ECDSA
+                        - Ed25519
+                    encoding:
+                      description: The private key cryptography standards (PKCS) encoding for this certificate's private key to be encoded in. If provided, allowed values are `PKCS1` and `PKCS8` standing for PKCS#1 and PKCS#8, respectively. Defaults to `PKCS1` if not specified.
+                      type: string
+                      enum:
+                        - PKCS1
+                        - PKCS8
+                    rotationPolicy:
+                      description: RotationPolicy controls how private keys should be regenerated when a re-issuance is being processed. If set to Never, a private key will only be generated if one does not already exist in the target `spec.secretName`. If one does exists but it does not have the correct algorithm or size, a warning will be raised to await user intervention. If set to Always, a private key matching the specified requirements will be generated whenever a re-issuance occurs. Default is 'Never' for backward compatibility.
+                      type: string
+                      enum:
+                        - Never
+                        - Always
+                    size:
+                      description: Size is the key bit size of the corresponding private key for this certificate. If `algorithm` is set to `RSA`, valid values are `2048`, `4096` or `8192`, and will default to `2048` if not specified. If `algorithm` is set to `ECDSA`, valid values are `256`, `384` or `521`, and will default to `256` if not specified. If `algorithm` is set to `Ed25519`, Size is ignored. No other values are allowed.
+            
