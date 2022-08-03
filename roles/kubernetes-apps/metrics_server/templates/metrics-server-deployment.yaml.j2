@@ -1,0 +1,11 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metrics-server
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: metrics-server
+    addonmanager.kubernetes.io/mode: Reconcile
+    version: {{ metrics_server_version }}
+spec:
