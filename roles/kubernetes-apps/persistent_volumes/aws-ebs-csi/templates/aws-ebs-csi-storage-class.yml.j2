@@ -13,4 +13,6 @@ allowedTopologies:
   - key: topology.ebs.csi.aws.com/zone
     values:
 {% for value in aws_ebs_availability_zones %}
-      - {{ value
+      - {{ value }}
+{% endfor %}
+{% endif %}
