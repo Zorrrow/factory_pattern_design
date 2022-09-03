@@ -147,4 +147,44 @@ spec:
         livenessProbe:
           httpGet:
             path: /liveness
-            port: 9
+            port: 9098
+            host: localhost
+          periodSeconds: 30
+          initialDelaySeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /readiness
+            port: 9098
+            host: localhost
+          periodSeconds: 10
+{% if typha_secure %}
+      volumes:
+        - name: typha-server
+          secret:
+            secretName: typha-server
+            items:
+              - key: tls.crt
+                path: server_certificate.pem
+              - key: tls.key
+                path: server_key.pem
+        - name: cacert
+          hostPath:
+            path: "{{ kube_cert_dir }}"
+{% endif %}
+
+---
+
+# This manifest creates a Pod Disruption Budget for Typha to allow K8s Cluster Autoscaler to evict
+
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: calico-typha
+  namespace: kube-system
+  labels:
+    k8s-app: calico-typha
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      k8s-app: calico-typha
