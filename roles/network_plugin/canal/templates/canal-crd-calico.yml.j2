@@ -771,4 +771,137 @@ spec:
                 description: 'BPFEnforceRPF enforce strict RPF on all interfaces with
                   BPF programs regardless of what is the per-interfaces or global
                   setting. Possible values are Disabled or Strict. [Default: Strict]'
-                type: s
+                type: string
+              bpfExtToServiceConnmark:
+                description: 'BPFExtToServiceConnmark in BPF mode, control a 32bit
+                  mark that is set on connections from an external client to a local
+                  service. This mark allows us to control how packets of that connection
+                  are routed within the host and how is routing intepreted by RPF
+                  check. [Default: 0]'
+                type: integer
+              bpfExternalServiceMode:
+                description: 'BPFExternalServiceMode in BPF mode, controls how connections
+                  from outside the cluster to services (node ports and cluster IPs)
+                  are forwarded to remote workloads.  If set to "Tunnel" then both
+                  request and response traffic is tunneled to the remote node.  If
+                  set to "DSR", the request traffic is tunneled but the response traffic
+                  is sent directly from the remote node.  In "DSR" mode, the remote
+                  node appears to use the IP of the ingress node; this requires a
+                  permissive L2 network.  [Default: Tunnel]'
+                type: string
+              bpfKubeProxyEndpointSlicesEnabled:
+                description: BPFKubeProxyEndpointSlicesEnabled in BPF mode, controls
+                  whether Felix's embedded kube-proxy accepts EndpointSlices or not.
+                type: boolean
+              bpfKubeProxyIptablesCleanupEnabled:
+                description: 'BPFKubeProxyIptablesCleanupEnabled, if enabled in BPF
+                  mode, Felix will proactively clean up the upstream Kubernetes kube-proxy''s
+                  iptables chains.  Should only be enabled if kube-proxy is not running.  [Default:
+                  true]'
+                type: boolean
+              bpfKubeProxyMinSyncPeriod:
+                description: 'BPFKubeProxyMinSyncPeriod, in BPF mode, controls the
+                  minimum time between updates to the dataplane for Felix''s embedded
+                  kube-proxy.  Lower values give reduced set-up latency.  Higher values
+                  reduce Felix CPU usage by batching up more work.  [Default: 1s]'
+                type: string
+              bpfLogLevel:
+                description: 'BPFLogLevel controls the log level of the BPF programs
+                  when in BPF dataplane mode.  One of "Off", "Info", or "Debug".  The
+                  logs are emitted to the BPF trace pipe, accessible with the command
+                  `tc exec bpf debug`. [Default: Off].'
+                type: string
+              bpfMapSizeConntrack:
+                description: 'BPFMapSizeConntrack sets the size for the conntrack
+                  map.  This map must be large enough to hold an entry for each active
+                  connection.  Warning: changing the size of the conntrack map can
+                  cause disruption.'
+                type: integer
+              bpfMapSizeIPSets:
+                description: BPFMapSizeIPSets sets the size for ipsets map.  The IP
+                  sets map must be large enough to hold an entry for each endpoint
+                  matched by every selector in the source/destination matches in network
+                  policy.  Selectors such as "all()" can result in large numbers of
+                  entries (one entry per endpoint in that case).
+                type: integer
+              bpfMapSizeNATAffinity:
+                type: integer
+              bpfMapSizeNATBackend:
+                description: BPFMapSizeNATBackend sets the size for nat back end map.
+                  This is the total number of endpoints. This is mostly more than
+                  the size of the number of services.
+                type: integer
+              bpfMapSizeNATFrontend:
+                description: BPFMapSizeNATFrontend sets the size for nat front end
+                  map. FrontendMap should be large enough to hold an entry for each
+                  nodeport, external IP and each port in each service.
+                type: integer
+              bpfMapSizeRoute:
+                description: BPFMapSizeRoute sets the size for the routes map.  The
+                  routes map should be large enough to hold one entry per workload
+                  and a handful of entries per host (enough to cover its own IPs and
+                  tunnel IPs).
+                type: integer
+              bpfPSNATPorts:
+                anyOf:
+                - type: integer
+                - type: string
+                description: 'BPFPSNATPorts sets the range from which we randomly
+                  pick a port if there is a source port collision. This should be
+                  within the ephemeral range as defined by RFC 6056 (1024â€“65535) and
+                  preferably outside the  ephemeral ranges used by common operating
+                  systems. Linux uses 32768â€“60999, while others mostly use the IANA
+                  defined range 49152â€“65535. It is not necessarily a problem if this
+                  range overlaps with the operating systems. Both ends of the range
+                  are inclusive. [Default: 20000:29999]'
+                pattern: ^.*
+                x-kubernetes-int-or-string: true
+              chainInsertMode:
+                description: 'ChainInsertMode controls whether Felix hooks the kernel''s
+                  top-level iptables chains by inserting a rule at the top of the
+                  chain or by appending a rule at the bottom. insert is the safe default
+                  since it prevents Calico''s rules from being bypassed. If you switch
+                  to append mode, be sure that the other rules in the chains signal
+                  acceptance by falling through to the Calico rules, otherwise the
+                  Calico policy will be bypassed. [Default: insert]'
+                type: string
+              dataplaneDriver:
+                description: DataplaneDriver filename of the external dataplane driver
+                  to use.  Only used if UseInternalDataplaneDriver is set to false.
+                type: string
+              dataplaneWatchdogTimeout:
+                description: 'DataplaneWatchdogTimeout is the readiness/liveness timeout
+                  used for Felix''s (internal) dataplane driver. Increase this value
+                  if you experience spurious non-ready or non-live events when Felix
+                  is under heavy load. Decrease the value to get felix to report non-live
+                  or non-ready more quickly. [Default: 90s]'
+                type: string
+              debugDisableLogDropping:
+                type: boolean
+              debugMemoryProfilePath:
+                type: string
+              debugSimulateCalcGraphHangAfter:
+                type: string
+              debugSimulateDataplaneHangAfter:
+                type: string
+              defaultEndpointToHostAction:
+                description: 'DefaultEndpointToHostAction controls what happens to
+                  traffic that goes from a workload endpoint to the host itself (after
+                  the traffic hits the endpoint egress policy). By default Calico
+                  blocks traffic from workload endpoints to the host itself with an
+                  iptables "DROP" action. If you want to allow some or all traffic
+                  from endpoint to host, set this parameter to RETURN or ACCEPT. Use
+                  RETURN if you have your own rules in the iptables "INPUT" chain;
+                  Calico will insert its rules at the top of that chain, then "RETURN"
+                  packets to the "INPUT" chain once it has completed processing workload
+                  endpoint egress policy. Use ACCEPT to unconditionally accept packets
+                  from workloads after processing workload endpoint egress policy.
+                  [Default: Drop]'
+                type: string
+              deviceRouteProtocol:
+                description: This defines the route protocol added to programmed device
+                  routes, by default this will be RTPROT_BOOT when left blank.
+                type: integer
+              deviceRouteSourceAddress:
+                description: This is the IPv4 source address to use on programmed
+          
