@@ -586,4 +586,189 @@ spec:
                         destination:
                           description: Destination of the route.
                           type: string
-         
+                        gateway:
+                          description: Gateway for the destination.
+                          type: string
+                        interface:
+                          description: Interface for the destination
+                          type: string
+                        learnedFrom:
+                          description: LearnedFrom contains information regarding
+                            where this route originated.
+                          properties:
+                            peerIP:
+                              description: If sourceType is NodeMesh or BGPPeer, IP
+                                address of the router that sent us this route.
+                              type: string
+                            sourceType:
+                              description: Type of the source where a route is learned
+                                from.
+                              type: string
+                          type: object
+                        type:
+                          description: Type indicates if the route is being used for
+                            forwarding or not.
+                          type: string
+                      type: object
+                    type: array
+                type: object
+            type: object
+        type: object
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: clusterinformations.crd.projectcalico.org
+spec:
+  group: crd.projectcalico.org
+  names:
+    kind: ClusterInformation
+    listKind: ClusterInformationList
+    plural: clusterinformations
+    singular: clusterinformation
+  scope: Cluster
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        description: ClusterInformation contains the cluster specific information.
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ClusterInformationSpec contains the values of describing
+              the cluster.
+            properties:
+              calicoVersion:
+                description: CalicoVersion is the version of Calico that the cluster
+                  is running
+                type: string
+              clusterGUID:
+                description: ClusterGUID is the GUID of the cluster
+                type: string
+              clusterType:
+                description: ClusterType describes the type of the cluster
+                type: string
+              datastoreReady:
+                description: DatastoreReady is used during significant datastore migrations
+                  to signal to components such as Felix that it should wait before
+                  accessing the datastore.
+                type: boolean
+              variant:
+                description: Variant declares which variant of Calico should be active.
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: felixconfigurations.crd.projectcalico.org
+spec:
+  group: crd.projectcalico.org
+  names:
+    kind: FelixConfiguration
+    listKind: FelixConfigurationList
+    plural: felixconfigurations
+    singular: felixconfiguration
+  scope: Cluster
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        description: Felix Configuration contains the configuration for Felix.
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: FelixConfigurationSpec contains the values of the Felix configuration.
+            properties:
+              allowIPIPPacketsFromWorkloads:
+                description: 'AllowIPIPPacketsFromWorkloads controls whether Felix
+                  will add a rule to drop IPIP encapsulated traffic from workloads
+                  [Default: false]'
+                type: boolean
+              allowVXLANPacketsFromWorkloads:
+                description: 'AllowVXLANPacketsFromWorkloads controls whether Felix
+                  will add a rule to drop VXLAN encapsulated traffic from workloads
+                  [Default: false]'
+                type: boolean
+              awsSrcDstCheck:
+                description: 'Set source-destination-check on AWS EC2 instances. Accepted
+                  value must be one of "DoNothing", "Enable" or "Disable". [Default:
+                  DoNothing]'
+                enum:
+                - DoNothing
+                - Enable
+                - Disable
+                type: string
+              bpfConnectTimeLoadBalancingEnabled:
+                description: 'BPFConnectTimeLoadBalancingEnabled when in BPF mode,
+                  controls whether Felix installs the connection-time load balancer.  The
+                  connect-time load balancer is required for the host to be able to
+                  reach Kubernetes services and it improves the performance of pod-to-service
+                  connections.  The only reason to disable it is for debugging purposes.  [Default:
+                  true]'
+                type: boolean
+              bpfDataIfacePattern:
+                description: BPFDataIfacePattern is a regular expression that controls
+                  which interfaces Felix should attach BPF programs to in order to
+                  catch traffic to/from the network.  This needs to match the interfaces
+                  that Calico workload traffic flows over as well as any interfaces
+                  that handle incoming traffic to nodeports and services from outside
+                  the cluster.  It should not match the workload interfaces (usually
+                  named cali...).
+                type: string
+              bpfDisableUnprivileged:
+                description: 'BPFDisableUnprivileged, if enabled, Felix sets the kernel.unprivileged_bpf_disabled
+                  sysctl to disable unprivileged use of BPF.  This ensures that unprivileged
+                  users cannot access Calico''s BPF maps and cannot insert their own
+                  BPF programs to interfere with Calico''s. [Default: true]'
+                type: boolean
+              bpfEnabled:
+                description: 'BPFEnabled, if enabled Felix will use the BPF dataplane.
+                  [Default: false]'
+                type: boolean
+              bpfEnforceRPF:
+                description: 'BPFEnforceRPF enforce strict RPF on all interfaces with
+                  BPF programs regardless of what is the per-interfaces or global
+                  setting. Possible values are Disabled or Strict. [Default: Strict]'
+                type: s
