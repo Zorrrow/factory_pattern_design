@@ -1058,4 +1058,150 @@ spec:
               iptablesLockProbeInterval:
                 description: 'IptablesLockProbeInterval is the time that Felix will
                   wait between attempts to acquire the iptables lock if it is not
-                  available. Lower values make Felix mo
+                  available. Lower values make Felix more responsive when the lock
+                  is contended, but use more CPU. [Default: 50ms]'
+                type: string
+              iptablesLockTimeout:
+                description: 'IptablesLockTimeout is the time that Felix will wait
+                  for the iptables lock, or 0, to disable. To use this feature, Felix
+                  must share the iptables lock file with all other processes that
+                  also take the lock. When running Felix inside a container, this
+                  requires the /run directory of the host to be mounted into the calico/node
+                  or calico/felix container. [Default: 0s disabled]'
+                type: string
+              iptablesMangleAllowAction:
+                type: string
+              iptablesMarkMask:
+                description: 'IptablesMarkMask is the mask that Felix selects its
+                  IPTables Mark bits from. Should be a 32 bit hexadecimal number with
+                  at least 8 bits set, none of which clash with any other mark bits
+                  in use on the system. [Default: 0xff000000]'
+                format: int32
+                type: integer
+              iptablesNATOutgoingInterfaceFilter:
+                type: string
+              iptablesPostWriteCheckInterval:
+                description: 'IptablesPostWriteCheckInterval is the period after Felix
+                  has done a write to the dataplane that it schedules an extra read
+                  back in order to check the write was not clobbered by another process.
+                  This should only occur if another application on the system doesn''t
+                  respect the iptables lock. [Default: 1s]'
+                type: string
+              iptablesRefreshInterval:
+                description: 'IptablesRefreshInterval is the period at which Felix
+                  re-checks the IP sets in the dataplane to ensure that no other process
+                  has accidentally broken Calico''s rules. Set to 0 to disable IP
+                  sets refresh. Note: the default for this value is lower than the
+                  other refresh intervals as a workaround for a Linux kernel bug that
+                  was fixed in kernel version 4.11. If you are using v4.11 or greater
+                  you may want to set this to, a higher value to reduce Felix CPU
+                  usage. [Default: 10s]'
+                type: string
+              ipv6Support:
+                description: IPv6Support controls whether Felix enables support for
+                  IPv6 (if supported by the in-use dataplane).
+                type: boolean
+              kubeNodePortRanges:
+                description: 'KubeNodePortRanges holds list of port ranges used for
+                  service node ports. Only used if felix detects kube-proxy running
+                  in ipvs mode. Felix uses these ranges to separate host and workload
+                  traffic. [Default: 30000:32767].'
+                items:
+                  anyOf:
+                  - type: integer
+                  - type: string
+                  pattern: ^.*
+                  x-kubernetes-int-or-string: true
+                type: array
+              logDebugFilenameRegex:
+                description: LogDebugFilenameRegex controls which source code files
+                  have their Debug log output included in the logs. Only logs from
+                  files with names that match the given regular expression are included.  The
+                  filter only applies to Debug level logs.
+                type: string
+              logFilePath:
+                description: 'LogFilePath is the full path to the Felix log. Set to
+                  none to disable file logging. [Default: /var/log/calico/felix.log]'
+                type: string
+              logPrefix:
+                description: 'LogPrefix is the log prefix that Felix uses when rendering
+                  LOG rules. [Default: calico-packet]'
+                type: string
+              logSeverityFile:
+                description: 'LogSeverityFile is the log severity above which logs
+                  are sent to the log file. [Default: Info]'
+                type: string
+              logSeverityScreen:
+                description: 'LogSeverityScreen is the log severity above which logs
+                  are sent to the stdout. [Default: Info]'
+                type: string
+              logSeveritySys:
+                description: 'LogSeveritySys is the log severity above which logs
+                  are sent to the syslog. Set to None for no logging to syslog. [Default:
+                  Info]'
+                type: string
+              maxIpsetSize:
+                type: integer
+              metadataAddr:
+                description: 'MetadataAddr is the IP address or domain name of the
+                  server that can answer VM queries for cloud-init metadata. In OpenStack,
+                  this corresponds to the machine running nova-api (or in Ubuntu,
+                  nova-api-metadata). A value of none (case insensitive) means that
+                  Felix should not set up any NAT rule for the metadata path. [Default:
+                  127.0.0.1]'
+                type: string
+              metadataPort:
+                description: 'MetadataPort is the port of the metadata server. This,
+                  combined with global.MetadataAddr (if not ''None''), is used to
+                  set up a NAT rule, from 169.254.169.254:80 to MetadataAddr:MetadataPort.
+                  In most cases this should not need to be changed [Default: 8775].'
+                type: integer
+              mtuIfacePattern:
+                description: MTUIfacePattern is a regular expression that controls
+                  which interfaces Felix should scan in order to calculate the host's
+                  MTU. This should not match workload interfaces (usually named cali...).
+                type: string
+              natOutgoingAddress:
+                description: NATOutgoingAddress specifies an address to use when performing
+                  source NAT for traffic in a natOutgoing pool that is leaving the
+                  network. By default the address used is an address on the interface
+                  the traffic is leaving on (ie it uses the iptables MASQUERADE target)
+                type: string
+              natPortRange:
+                anyOf:
+                - type: integer
+                - type: string
+                description: NATPortRange specifies the range of ports that is used
+                  for port mapping when doing outgoing NAT. When unset the default
+                  behavior of the network stack is used.
+                pattern: ^.*
+                x-kubernetes-int-or-string: true
+              netlinkTimeout:
+                type: string
+              openstackRegion:
+                description: 'OpenstackRegion is the name of the region that a particular
+                  Felix belongs to. In a multi-region Calico/OpenStack deployment,
+                  this must be configured somehow for each Felix (here in the datamodel,
+                  or in felix.cfg or the environment on each compute node), and must
+                  match the [calico] openstack_region value configured in neutron.conf
+                  on each node. [Default: Empty]'
+                type: string
+              policySyncPathPrefix:
+                description: 'PolicySyncPathPrefix is used to by Felix to communicate
+                  policy changes to external services, like Application layer policy.
+                  [Default: Empty]'
+                type: string
+              prometheusGoMetricsEnabled:
+                description: 'PrometheusGoMetricsEnabled disables Go runtime metrics
+                  collection, which the Prometheus client does by default, when set
+                  to false. This reduces the number of metrics reported, reducing
+                  Prometheus load. [Default: true]'
+                type: boolean
+              prometheusMetricsEnabled:
+                description: 'PrometheusMetricsEnabled enables the Prometheus metrics
+                  server in Felix if set to true. [Default: false]'
+                type: boolean
+              prometheusMetricsHost:
+                description: 'PrometheusMetricsHost is the host that the Prometheus
+                  metrics server should bind to. [Default: empty]'
+                type:
