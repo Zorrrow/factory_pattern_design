@@ -1359,4 +1359,156 @@ spec:
                 type: string
               xdpEnabled:
                 description: 'XDPEnabled enables XDP acceleration for suitable untracked
-               
+                  incoming deny rules. [Default: true]'
+                type: boolean
+              xdpRefreshInterval:
+                description: 'XDPRefreshInterval is the period at which Felix re-checks
+                  all XDP state to ensure that no other process has accidentally broken
+                  Calico''s BPF maps or attached programs. Set to 0 to disable XDP
+                  refresh. [Default: 90s]'
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: globalnetworkpolicies.crd.projectcalico.org
+spec:
+  group: crd.projectcalico.org
+  names:
+    kind: GlobalNetworkPolicy
+    listKind: GlobalNetworkPolicyList
+    plural: globalnetworkpolicies
+    singular: globalnetworkpolicy
+  scope: Cluster
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              applyOnForward:
+                description: ApplyOnForward indicates to apply the rules in this policy
+                  on forward traffic.
+                type: boolean
+              doNotTrack:
+                description: DoNotTrack indicates whether packets matched by the rules
+                  in this policy should go through the data plane's connection tracking,
+                  such as Linux conntrack.  If True, the rules in this policy are
+                  applied before any data plane connection tracking, and packets allowed
+                  by this policy are marked as not to be tracked.
+                type: boolean
+              egress:
+                description: The ordered set of egress rules.  Each rule contains
+                  a set of packet match criteria and a corresponding action to apply.
+                items:
+                  description: "A Rule encapsulates a set of match criteria and an
+                    action.  Both selector-based security Policy and security Profiles
+                    reference rules - separated out as a list of rules for both ingress
+                    and egress packet matching. \n Each positive match criteria has
+                    a negated version, prefixed with \"Not\". All the match criteria
+                    within a rule must be satisfied for a packet to match. A single
+                    rule can contain the positive and negative version of a match
+                    and both must be satisfied for the rule to match."
+                  properties:
+                    action:
+                      type: string
+                    destination:
+                      description: Destination contains the match criteria that apply
+                        to destination entity.
+                      properties:
+                        namespaceSelector:
+                          description: "NamespaceSelector is an optional field that
+                            contains a selector expression. Only traffic that originates
+                            from (or terminates at) endpoints within the selected
+                            namespaces will be matched. When both NamespaceSelector
+                            and another selector are defined on the same rule, then
+                            only workload endpoints that are matched by both selectors
+                            will be selected by the rule. \n For NetworkPolicy, an
+                            empty NamespaceSelector implies that the Selector is limited
+                            to selecting only workload endpoints in the same namespace
+                            as the NetworkPolicy. \n For NetworkPolicy, `global()`
+                            NamespaceSelector implies that the Selector is limited
+                            to selecting only GlobalNetworkSet or HostEndpoint. \n
+                            For GlobalNetworkPolicy, an empty NamespaceSelector implies
+                            the Selector applies to workload endpoints across all
+                            namespaces."
+                          type: string
+                        nets:
+                          description: Nets is an optional field that restricts the
+                            rule to only apply to traffic that originates from (or
+                            terminates at) IP addresses in any of the given subnets.
+                          items:
+                            type: string
+                          type: array
+                        notNets:
+                          description: NotNets is the negated version of the Nets
+                            field.
+                          items:
+                            type: string
+                          type: array
+                        notPorts:
+                          description: NotPorts is the negated version of the Ports
+                            field. Since only some protocols have ports, if any ports
+                            are specified it requires the Protocol match in the Rule
+                            to be set to "TCP" or "UDP".
+                          items:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            pattern: ^.*
+                            x-kubernetes-int-or-string: true
+                          type: array
+                        notSelector:
+                          description: NotSelector is the negated version of the Selector
+                            field.  See Selector field for subtleties with negated
+                            selectors.
+                          type: string
+                        ports:
+                          description: "Ports is an optional field that restricts
+                            the rule to only apply to traffic that has a source (destination)
+                            port that matches one of these ranges/values. This value
+                            is a list of integers or strings that represent ranges
+                            of ports. \n Since only some protocols have ports, if
+                            any ports are specified it requires the Protocol match
+                            in the Rule to be set to \"TCP\" or \"UDP\"."
+                          items:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            pattern: ^.*
+                            x-kubernetes-int-or-string: true
+                          type: array
+                        selector:
+                          description: "Selector is an optional field that contains
+                            a selector expression (see Policy for sample syntax).
+                            \ Only traffic that originates from (terminates at) endpoints
+                            matching the selector will be matched. \n Note that: in
+                            addition to the negated version of the Selector (see NotSelector
+                            below), the selector expression syntax itself supports
+                            negation.  The two types of negation are subtly different.
+                            One negates the set of matched endpoints, the other negates
+                            
