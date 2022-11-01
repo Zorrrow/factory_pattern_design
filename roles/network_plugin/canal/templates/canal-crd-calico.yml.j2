@@ -1511,4 +1511,147 @@ spec:
                             below), the selector expression syntax itself supports
                             negation.  The two types of negation are subtly different.
                             One negates the set of matched endpoints, the other negates
-                            
+                            the whole match: \n \tSelector = \"!has(my_label)\" matches
+                            packets that are from other Calico-controlled \tendpoints
+                            that do not have the label \"my_label\". \n \tNotSelector
+                            = \"has(my_label)\" matches packets that are not from
+                            Calico-controlled \tendpoints that do have the label \"my_label\".
+                            \n The effect is that the latter will accept packets from
+                            non-Calico sources whereas the former is limited to packets
+                            from Calico-controlled endpoints."
+                          type: string
+                        serviceAccounts:
+                          description: ServiceAccounts is an optional field that restricts
+                            the rule to only apply to traffic that originates from
+                            (or terminates at) a pod running as a matching service
+                            account.
+                          properties:
+                            names:
+                              description: Names is an optional field that restricts
+                                the rule to only apply to traffic that originates
+                                from (or terminates at) a pod running as a service
+                                account whose name is in the list.
+                              items:
+                                type: string
+                              type: array
+                            selector:
+                              description: Selector is an optional field that restricts
+                                the rule to only apply to traffic that originates
+                                from (or terminates at) a pod running as a service
+                                account that matches the given label selector. If
+                                both Names and Selector are specified then they are
+                                AND'ed.
+                              type: string
+                          type: object
+                        services:
+                          description: "Services is an optional field that contains
+                            options for matching Kubernetes Services. If specified,
+                            only traffic that originates from or terminates at endpoints
+                            within the selected service(s) will be matched, and only
+                            to/from each endpoint's port. \n Services cannot be specified
+                            on the same rule as Selector, NotSelector, NamespaceSelector,
+                            Nets, NotNets or ServiceAccounts. \n Ports and NotPorts
+                            can only be specified with Services on ingress rules."
+                          properties:
+                            name:
+                              description: Name specifies the name of a Kubernetes
+                                Service to match.
+                              type: string
+                            namespace:
+                              description: Namespace specifies the namespace of the
+                                given Service. If left empty, the rule will match
+                                within this policy's namespace.
+                              type: string
+                          type: object
+                      type: object
+                    http:
+                      description: HTTP contains match criteria that apply to HTTP
+                        requests.
+                      properties:
+                        methods:
+                          description: Methods is an optional field that restricts
+                            the rule to apply only to HTTP requests that use one of
+                            the listed HTTP Methods (e.g. GET, PUT, etc.) Multiple
+                            methods are OR'd together.
+                          items:
+                            type: string
+                          type: array
+                        paths:
+                          description: 'Paths is an optional field that restricts
+                            the rule to apply to HTTP requests that use one of the
+                            listed HTTP Paths. Multiple paths are OR''d together.
+                            e.g: - exact: /foo - prefix: /bar NOTE: Each entry may
+                            ONLY specify either a `exact` or a `prefix` match. The
+                            validator will check for it.'
+                          items:
+                            description: 'HTTPPath specifies an HTTP path to match.
+                              It may be either of the form: exact: <path>: which matches
+                              the path exactly or prefix: <path-prefix>: which matches
+                              the path prefix'
+                            properties:
+                              exact:
+                                type: string
+                              prefix:
+                                type: string
+                            type: object
+                          type: array
+                      type: object
+                    icmp:
+                      description: ICMP is an optional field that restricts the rule
+                        to apply to a specific type and code of ICMP traffic.  This
+                        should only be specified if the Protocol field is set to "ICMP"
+                        or "ICMPv6".
+                      properties:
+                        code:
+                          description: Match on a specific ICMP code.  If specified,
+                            the Type value must also be specified. This is a technical
+                            limitation imposed by the kernel's iptables firewall,
+                            which Calico uses to enforce the rule.
+                          type: integer
+                        type:
+                          description: Match on a specific ICMP type.  For example
+                            a value of 8 refers to ICMP Echo Request (i.e. pings).
+                          type: integer
+                      type: object
+                    ipVersion:
+                      description: IPVersion is an optional field that restricts the
+                        rule to only match a specific IP version.
+                      type: integer
+                    metadata:
+                      description: Metadata contains additional information for this
+                        rule
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          description: Annotations is a set of key value pairs that
+                            give extra information about the rule
+                          type: object
+                      type: object
+                    notICMP:
+                      description: NotICMP is the negated version of the ICMP field.
+                      properties:
+                        code:
+                          description: Match on a specific ICMP code.  If specified,
+                            the Type value must also be specified. This is a technical
+                            limitation imposed by the kernel's iptables firewall,
+                            which Calico uses to enforce the rule.
+                          type: integer
+                        type:
+                          description: Match on a specific ICMP type.  For example
+                            a value of 8 refers to ICMP Echo Request (i.e. pings).
+                          type: integer
+                      type: object
+                    notProtocol:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      description: NotProtocol is the negated version of the Protocol
+                        field.
+                      pattern: ^.*
+                      x-kubernetes-int-or-string: true
+                    protocol:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      description: "Protocol is an op
