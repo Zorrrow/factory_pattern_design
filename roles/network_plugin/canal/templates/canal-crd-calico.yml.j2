@@ -1917,4 +1917,146 @@ spec:
                               type: string
                           type: object
                         services:
-                          description: "Services is an optional field 
+                          description: "Services is an optional field that contains
+                            options for matching Kubernetes Services. If specified,
+                            only traffic that originates from or terminates at endpoints
+                            within the selected service(s) will be matched, and only
+                            to/from each endpoint's port. \n Services cannot be specified
+                            on the same rule as Selector, NotSelector, NamespaceSelector,
+                            Nets, NotNets or ServiceAccounts. \n Ports and NotPorts
+                            can only be specified with Services on ingress rules."
+                          properties:
+                            name:
+                              description: Name specifies the name of a Kubernetes
+                                Service to match.
+                              type: string
+                            namespace:
+                              description: Namespace specifies the namespace of the
+                                given Service. If left empty, the rule will match
+                                within this policy's namespace.
+                              type: string
+                          type: object
+                      type: object
+                    http:
+                      description: HTTP contains match criteria that apply to HTTP
+                        requests.
+                      properties:
+                        methods:
+                          description: Methods is an optional field that restricts
+                            the rule to apply only to HTTP requests that use one of
+                            the listed HTTP Methods (e.g. GET, PUT, etc.) Multiple
+                            methods are OR'd together.
+                          items:
+                            type: string
+                          type: array
+                        paths:
+                          description: 'Paths is an optional field that restricts
+                            the rule to apply to HTTP requests that use one of the
+                            listed HTTP Paths. Multiple paths are OR''d together.
+                            e.g: - exact: /foo - prefix: /bar NOTE: Each entry may
+                            ONLY specify either a `exact` or a `prefix` match. The
+                            validator will check for it.'
+                          items:
+                            description: 'HTTPPath specifies an HTTP path to match.
+                              It may be either of the form: exact: <path>: which matches
+                              the path exactly or prefix: <path-prefix>: which matches
+                              the path prefix'
+                            properties:
+                              exact:
+                                type: string
+                              prefix:
+                                type: string
+                            type: object
+                          type: array
+                      type: object
+                    icmp:
+                      description: ICMP is an optional field that restricts the rule
+                        to apply to a specific type and code of ICMP traffic.  This
+                        should only be specified if the Protocol field is set to "ICMP"
+                        or "ICMPv6".
+                      properties:
+                        code:
+                          description: Match on a specific ICMP code.  If specified,
+                            the Type value must also be specified. This is a technical
+                            limitation imposed by the kernel's iptables firewall,
+                            which Calico uses to enforce the rule.
+                          type: integer
+                        type:
+                          description: Match on a specific ICMP type.  For example
+                            a value of 8 refers to ICMP Echo Request (i.e. pings).
+                          type: integer
+                      type: object
+                    ipVersion:
+                      description: IPVersion is an optional field that restricts the
+                        rule to only match a specific IP version.
+                      type: integer
+                    metadata:
+                      description: Metadata contains additional information for this
+                        rule
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          description: Annotations is a set of key value pairs that
+                            give extra information about the rule
+                          type: object
+                      type: object
+                    notICMP:
+                      description: NotICMP is the negated version of the ICMP field.
+                      properties:
+                        code:
+                          description: Match on a specific ICMP code.  If specified,
+                            the Type value must also be specified. This is a technical
+                            limitation imposed by the kernel's iptables firewall,
+                            which Calico uses to enforce the rule.
+                          type: integer
+                        type:
+                          description: Match on a specific ICMP type.  For example
+                            a value of 8 refers to ICMP Echo Request (i.e. pings).
+                          type: integer
+                      type: object
+                    notProtocol:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      description: NotProtocol is the negated version of the Protocol
+                        field.
+                      pattern: ^.*
+                      x-kubernetes-int-or-string: true
+                    protocol:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      description: "Protocol is an optional field that restricts the
+                        rule to only apply to traffic of a specific IP protocol. Required
+                        if any of the EntityRules contain Ports (because ports only
+                        apply to certain protocols). \n Must be one of these string
+                        values: \"TCP\", \"UDP\", \"ICMP\", \"ICMPv6\", \"SCTP\",
+                        \"UDPLite\" or an integer in the range 1-255."
+                      pattern: ^.*
+                      x-kubernetes-int-or-string: true
+                    source:
+                      description: Source contains the match criteria that apply to
+                        source entity.
+                      properties:
+                        namespaceSelector:
+                          description: "NamespaceSelector is an optional field that
+                            contains a selector expression. Only traffic that originates
+                            from (or terminates at) endpoints within the selected
+                            namespaces will be matched. When both NamespaceSelector
+                            and another selector are defined on the same rule, then
+                            only workload endpoints that are matched by both selectors
+                            will be selected by the rule. \n For NetworkPolicy, an
+                            empty NamespaceSelector implies that the Selector is limited
+                            to selecting only workload endpoints in the same namespace
+                            as the NetworkPolicy. \n For NetworkPolicy, `global()`
+                            NamespaceSelector implies that the Selector is limited
+                            to selecting only GlobalNetworkSet or HostEndpoint. \n
+                            For GlobalNetworkPolicy, an empty NamespaceSelector implies
+                            the Selector applies to workload endpoints across all
+                            namespaces."
+                          type: string
+                        nets:
+                          description: Nets is an optional field that restricts the
+                            rule to only apply to traffic that originates from (or
+              
