@@ -2194,4 +2194,182 @@ spec:
                   ... }  ->  true if the value of label X is not one of \"a\", \"b\",
                   \"c\" \thas(label_name)  -> True if that label is present \t! expr
                   -> negation of expr \texpr && expr  -> Short-circuit and \texpr
-                  || ex
+                  || expr  -> Short-circuit or \t( expr ) -> parens for grouping \tall()
+                  or the empty selector -> matches all endpoints. \n Label names are
+                  allowed to contain alphanumerics, -, _ and /. String literals are
+                  more permissive but they do not support escape characters. \n Examples
+                  (with made-up labels): \n \ttype == \"webserver\" && deployment
+                  == \"prod\" \ttype in {\"frontend\", \"backend\"} \tdeployment !=
+                  \"dev\" \t! has(label_name)"
+                type: string
+              serviceAccountSelector:
+                description: ServiceAccountSelector is an optional field for an expression
+                  used to select a pod based on service accounts.
+                type: string
+              types:
+                description: "Types indicates whether this policy applies to ingress,
+                  or to egress, or to both.  When not explicitly specified (and so
+                  the value on creation is empty or nil), Calico defaults Types according
+                  to what Ingress and Egress rules are present in the policy.  The
+                  default is: \n - [ PolicyTypeIngress ], if there are no Egress rules
+                  (including the case where there are   also no Ingress rules) \n
+                  - [ PolicyTypeEgress ], if there are Egress rules but no Ingress
+                  rules \n - [ PolicyTypeIngress, PolicyTypeEgress ], if there are
+                  both Ingress and Egress rules. \n When the policy is read back again,
+                  Types will always be one of these values, never empty or nil."
+                items:
+                  description: PolicyType enumerates the possible values of the PolicySpec
+                    Types field.
+                  type: string
+                type: array
+            type: object
+        type: object
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: globalnetworksets.crd.projectcalico.org
+spec:
+  group: crd.projectcalico.org
+  names:
+    kind: GlobalNetworkSet
+    listKind: GlobalNetworkSetList
+    plural: globalnetworksets
+    singular: globalnetworkset
+  scope: Cluster
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        description: GlobalNetworkSet contains a set of arbitrary IP sub-networks/CIDRs
+          that share labels to allow rules to refer to them via selectors.  The labels
+          of GlobalNetworkSet are not namespaced.
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: GlobalNetworkSetSpec contains the specification for a NetworkSet
+              resource.
+            properties:
+              nets:
+                description: The list of IP networks that belong to this set.
+                items:
+                  type: string
+                type: array
+            type: object
+        type: object
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: hostendpoints.crd.projectcalico.org
+spec:
+  group: crd.projectcalico.org
+  names:
+    kind: HostEndpoint
+    listKind: HostEndpointList
+    plural: hostendpoints
+    singular: hostendpoint
+  scope: Cluster
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: HostEndpointSpec contains the specification for a HostEndpoint
+              resource.
+            properties:
+              expectedIPs:
+                description: "The expected IP addresses (IPv4 and IPv6) of the endpoint.
+                  If \"InterfaceName\" is not present, Calico will look for an interface
+                  matching any of the IPs in the list and apply policy to that. Note:
+                  \tWhen using the selector match criteria in an ingress or egress
+                  security Policy \tor Profile, Calico converts the selector into
+                  a set of IP addresses. For host \tendpoints, the ExpectedIPs field
+                  is used for that purpose. (If only the interface \tname is specified,
+                  Calico does not learn the IPs of the interface for use in match
+                  \tcriteria.)"
+                items:
+                  type: string
+                type: array
+              interfaceName:
+                description: "Either \"*\", or the name of a specific Linux interface
+                  to apply policy to; or empty.  \"*\" indicates that this HostEndpoint
+                  governs all traffic to, from or through the default network namespace
+                  of the host named by the \"Node\" field; entering and leaving that
+                  namespace via any interface, including those from/to non-host-networked
+                  local workloads. \n If InterfaceName is not \"*\", this HostEndpoint
+                  only governs traffic that enters or leaves the host through the
+                  specific interface named by InterfaceName, or - when InterfaceName
+                  is empty - through the specific interface that has one of the IPs
+                  in ExpectedIPs. Therefore, when InterfaceName is empty, at least
+                  one expected IP must be specified.  Only external interfaces (such
+                  as \"eth0\") are supported here; it isn't possible for a HostEndpoint
+                  to protect traffic through a specific local workload interface.
+                  \n Note: Only some kinds of policy are implemented for \"*\" HostEndpoints;
+                  initially just pre-DNAT policy.  Please check Calico documentation
+                  for the latest position."
+                type: string
+              node:
+                description: The node name identifying the Calico node instance.
+                type: string
+              ports:
+                description: Ports contains the endpoint's named ports, which may
+                  be referenced in security policy rules.
+                items:
+                  properties:
+                    name:
+                      type: string
+                    port:
+                      type: integer
+                    protocol:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^.*
+                      x-kubernetes-int-or-string: true
+                  required:
+                  - name
+                  - port
+                  - p
