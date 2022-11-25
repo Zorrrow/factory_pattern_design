@@ -2960,4 +2960,165 @@ spec:
                             type: object
                           leakGracePeriod:
                             description: 'LeakGracePeriod is the period used by the
-                              controller
+                              controller to determine if an IP address has been leaked.
+                              Set to 0 to disable IP garbage collection. [Default:
+                              15m]'
+                            type: string
+                          reconcilerPeriod:
+                            description: 'ReconcilerPeriod is the period to perform
+                              reconciliation with the Calico datastore. [Default:
+                              5m]'
+                            type: string
+                          syncLabels:
+                            description: 'SyncLabels controls whether to copy Kubernetes
+                              node labels to Calico nodes. [Default: Enabled]'
+                            type: string
+                        type: object
+                      policy:
+                        description: Policy enables and configures the policy controller.
+                          Enabled by default, set to nil to disable.
+                        properties:
+                          reconcilerPeriod:
+                            description: 'ReconcilerPeriod is the period to perform
+                              reconciliation with the Calico datastore. [Default:
+                              5m]'
+                            type: string
+                        type: object
+                      serviceAccount:
+                        description: ServiceAccount enables and configures the service
+                          account controller. Enabled by default, set to nil to disable.
+                        properties:
+                          reconcilerPeriod:
+                            description: 'ReconcilerPeriod is the period to perform
+                              reconciliation with the Calico datastore. [Default:
+                              5m]'
+                            type: string
+                        type: object
+                      workloadEndpoint:
+                        description: WorkloadEndpoint enables and configures the workload
+                          endpoint controller. Enabled by default, set to nil to disable.
+                        properties:
+                          reconcilerPeriod:
+                            description: 'ReconcilerPeriod is the period to perform
+                              reconciliation with the Calico datastore. [Default:
+                              5m]'
+                            type: string
+                        type: object
+                    type: object
+                  debugProfilePort:
+                    description: DebugProfilePort configures the port to serve memory
+                      and cpu profiles on. If not specified, profiling is disabled.
+                    format: int32
+                    type: integer
+                  etcdV3CompactionPeriod:
+                    description: 'EtcdV3CompactionPeriod is the period between etcdv3
+                      compaction requests. Set to 0 to disable. [Default: 10m]'
+                    type: string
+                  healthChecks:
+                    description: 'HealthChecks enables or disables support for health
+                      checks [Default: Enabled]'
+                    type: string
+                  logSeverityScreen:
+                    description: 'LogSeverityScreen is the log severity above which
+                      logs are sent to the stdout. [Default: Info]'
+                    type: string
+                  prometheusMetricsPort:
+                    description: 'PrometheusMetricsPort is the TCP port that the Prometheus
+                      metrics server should bind to. Set to 0 to disable. [Default:
+                      9094]'
+                    type: integer
+                required:
+                - controllers
+                type: object
+            type: object
+        type: object
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: networkpolicies.crd.projectcalico.org
+spec:
+  group: crd.projectcalico.org
+  names:
+    kind: NetworkPolicy
+    listKind: NetworkPolicyList
+    plural: networkpolicies
+    singular: networkpolicy
+  scope: Namespaced
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              egress:
+                description: The ordered set of egress rules.  Each rule contains
+                  a set of packet match criteria and a corresponding action to apply.
+                items:
+                  description: "A Rule encapsulates a set of match criteria and an
+                    action.  Both selector-based security Policy and security Profiles
+                    reference rules - separated out as a list of rules for both ingress
+                    and egress packet matching. \n Each positive match criteria has
+                    a negated version, prefixed with \"Not\". All the match criteria
+                    within a rule must be satisfied for a packet to match. A single
+                    rule can contain the positive and negative version of a match
+                    and both must be satisfied for the rule to match."
+                  properties:
+                    action:
+                      type: string
+                    destination:
+                      description: Destination contains the match criteria that apply
+                        to destination entity.
+                      properties:
+                        namespaceSelector:
+                          description: "NamespaceSelector is an optional field that
+                            contains a selector expression. Only traffic that originates
+                            from (or terminates at) endpoints within the selected
+                            namespaces will be matched. When both NamespaceSelector
+                            and another selector are defined on the same rule, then
+                            only workload endpoints that are matched by both selectors
+                            will be selected by the rule. \n For NetworkPolicy, an
+                            empty NamespaceSelector implies that the Selector is limited
+                            to selecting only workload endpoints in the same namespace
+                            as the NetworkPolicy. \n For NetworkPolicy, `global()`
+                            NamespaceSelector implies that the Selector is limited
+                            to selecting only GlobalNetworkSet or HostEndpoint. \n
+                            For GlobalNetworkPolicy, an empty NamespaceSelector implies
+                            the Selector applies to workload endpoints across all
+                            namespaces."
+                          type: string
+                        nets:
+                          description: Nets is an optional field that restricts the
+                            rule to only apply to traffic that originates from (or
+                            terminates at) IP addresses in any of the given subnets.
+                          items:
+                            type: string
+                          type: array
+                        notNets:
+                          description: NotNets is the negated version of the Nets
+                            field.
+                          items:
+                            type: string
+               
