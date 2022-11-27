@@ -1,0 +1,63 @@
+# Source: calico/templates/calico-node.yaml
+# This manifest installs the canal container, as well
+# as the CNI plugins and network config on
+# each master and worker node in a Kubernetes cluster.
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: canal
+  namespace: kube-system
+  labels:
+    k8s-app: canal
+spec:
+  selector:
+    matchLabels:
+      k8s-app: canal
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: {{ serial | default('20%') }}
+  template:
+    metadata:
+      labels:
+        k8s-app: canal
+    spec:
+      nodeSelector:
+        kubernetes.io/os: linux
+      hostNetwork: true
+      tolerations:
+        # Make sure canal gets scheduled on all nodes.
+        - effect: NoSchedule
+          operator: Exists
+        # Mark the pod as a critical add-on for rescheduling.
+        - key: CriticalAddonsOnly
+          operator: Exists
+        - effect: NoExecute
+          operator: Exists
+      serviceAccountName: canal
+      # Minimize downtime during a rolling upgrade or deletion; tell Kubernetes to do a "force
+      # deletion": https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods.
+      terminationGracePeriodSeconds: 0
+      priorityClassName: system-node-critical
+      initContainers:
+        # This container installs the CNI binaries
+        # and CNI network config file on each node.
+        - name: install-cni
+          image: {{ calico_cni_image_repo }}:{{ calico_cni_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          command: ["/opt/cni/bin/install"]
+          envFrom:
+          - configMapRef:
+              # Allow KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT to be overridden for eBPF mode.
+              name: kubernetes-services-endpoint
+              optional: true
+          env:
+            # Set the serviceaccount name to use for the Calico CNI plugin.
+            # We use canal-node instead of calico-node when using flannel networking.
+            - name: CALICO_CNI_SERVICE_ACCOUNT
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.serviceAccountName
+            # Name of the CNI config file to create.
+            - name: CNI_CONF_NAME
+              value: "10-canal

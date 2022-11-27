@@ -3804,4 +3804,126 @@ spec:
                             Nets, NotNets or ServiceAccounts. \n Ports and NotPorts
                             can only be specified with Services on ingress rules."
                           properties:
-                            name
+                            name:
+                              description: Name specifies the name of a Kubernetes
+                                Service to match.
+                              type: string
+                            namespace:
+                              description: Namespace specifies the namespace of the
+                                given Service. If left empty, the rule will match
+                                within this policy's namespace.
+                              type: string
+                          type: object
+                      type: object
+                  required:
+                  - action
+                  type: object
+                type: array
+              order:
+                description: Order is an optional field that specifies the order in
+                  which the policy is applied. Policies with higher "order" are applied
+                  after those with lower order.  If the order is omitted, it may be
+                  considered to be "infinite" - i.e. the policy will be applied last.  Policies
+                  with identical order will be applied in alphanumerical order based
+                  on the Policy "Name".
+                type: number
+              selector:
+                description: "The selector is an expression used to pick pick out
+                  the endpoints that the policy should be applied to. \n Selector
+                  expressions follow this syntax: \n \tlabel == \"string_literal\"
+                  \ ->  comparison, e.g. my_label == \"foo bar\" \tlabel != \"string_literal\"
+                  \  ->  not equal; also matches if label is not present \tlabel in
+                  { \"a\", \"b\", \"c\", ... }  ->  true if the value of label X is
+                  one of \"a\", \"b\", \"c\" \tlabel not in { \"a\", \"b\", \"c\",
+                  ... }  ->  true if the value of label X is not one of \"a\", \"b\",
+                  \"c\" \thas(label_name)  -> True if that label is present \t! expr
+                  -> negation of expr \texpr && expr  -> Short-circuit and \texpr
+                  || expr  -> Short-circuit or \t( expr ) -> parens for grouping \tall()
+                  or the empty selector -> matches all endpoints. \n Label names are
+                  allowed to contain alphanumerics, -, _ and /. String literals are
+                  more permissive but they do not support escape characters. \n Examples
+                  (with made-up labels): \n \ttype == \"webserver\" && deployment
+                  == \"prod\" \ttype in {\"frontend\", \"backend\"} \tdeployment !=
+                  \"dev\" \t! has(label_name)"
+                type: string
+              serviceAccountSelector:
+                description: ServiceAccountSelector is an optional field for an expression
+                  used to select a pod based on service accounts.
+                type: string
+              types:
+                description: "Types indicates whether this policy applies to ingress,
+                  or to egress, or to both.  When not explicitly specified (and so
+                  the value on creation is empty or nil), Calico defaults Types according
+                  to what Ingress and Egress are present in the policy.  The default
+                  is: \n - [ PolicyTypeIngress ], if there are no Egress rules (including
+                  the case where there are   also no Ingress rules) \n - [ PolicyTypeEgress
+                  ], if there are Egress rules but no Ingress rules \n - [ PolicyTypeIngress,
+                  PolicyTypeEgress ], if there are both Ingress and Egress rules.
+                  \n When the policy is read back again, Types will always be one
+                  of these values, never empty or nil."
+                items:
+                  description: PolicyType enumerates the possible values of the PolicySpec
+                    Types field.
+                  type: string
+                type: array
+            type: object
+        type: object
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: networksets.crd.projectcalico.org
+spec:
+  group: crd.projectcalico.org
+  names:
+    kind: NetworkSet
+    listKind: NetworkSetList
+    plural: networksets
+    singular: networkset
+  scope: Namespaced
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        description: NetworkSet is the Namespaced-equivalent of the GlobalNetworkSet.
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: NetworkSetSpec contains the specification for a NetworkSet
+              resource.
+            properties:
+              nets:
+                description: The list of IP networks that belong to this set.
+                items:
+                  type: string
+                type: array
+            type: object
+        type: object
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
