@@ -1,0 +1,92 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cilium-operator
+  namespace: kube-system
+  labels:
+    io.cilium/app: operator
+    name: cilium-operator
+spec:
+  replicas: {{ cilium_operator_replicas }}
+  selector:
+    matchLabels:
+      io.cilium/app: operator
+      name: cilium-operator
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+{% if cilium_enable_prometheus %}
+      annotations:
+        prometheus.io/port: "{{ cilium_operator_scrape_port }}"
+        prometheus.io/scrape: "true"
+{% endif %}
+      labels:
+        io.cilium/app: operator
+        name: cilium-operator
+    spec:
+      containers:
+        - name: cilium-operator
+          image: "{{ cilium_operator_image_repo }}:{{ cilium_operator_image_tag }}"
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          command:
+            - cilium-operator
+          args:
+            - --config-dir=/tmp/cilium/config-map
+            - --debug=$(CILIUM_DEBUG)
+{% if cilium_operator_custom_args is string %}
+            - {{ cilium_operator_custom_args }}
+{% else %}
+{% for flag in cilium_operator_custom_args %}
+            - {{ flag }}
+{% endfor %}
+{% endif %}
+          env:
+            - name: K8S_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: spec.nodeName
+            - name: CILIUM_K8S_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+            - name: CILIUM_DEBUG
+              valueFrom:
+                configMapKeyRef:
+                  key: debug
+                  name: cilium-config
+                  optional: true
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: cilium-aws
+                  key: AWS_ACCESS_KEY_ID
+                  optional: true
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: cilium-aws
+                  key: AWS_SECRET_ACCESS_KEY
+                  optional: true
+            - name: AWS_DEFAULT_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: cilium-aws
+                  key: AWS_DEFAULT_REGION
+                  optional: true
+{% if cilium_kube_proxy_replacement == 'strict' %}
+            - name: KUBERNETES_SERVICE_HOST
+              value: "{{ kube_apiserver_global_endpoint | urlsplit('hostname') }}"
+            - name: KUBERNETES_SERVICE_PORT
+              value: "{{ kube_apiserver_global_endpoint | urlsplit('port') }}"
+{% endif %}
+{% if cilium_enable_prometheus %}
+            - name: POD_NAMESPACE
+              valueFrom:
+       
