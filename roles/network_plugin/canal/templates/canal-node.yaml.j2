@@ -266,3 +266,153 @@ spec:
             - mountPath: /calico-secrets
               name: etcd-certs
             - name: policysync
+              mountPath: /var/run/nodeagent
+            # For eBPF mode, we need to be able to mount the BPF filesystem at /sys/fs/bpf so we mount in the
+            # parent directory.
+            - name: bpffs
+              mountPath: /sys/fs/bpf
+            - name: cni-log-dir
+              mountPath: /var/log/calico/cni
+              readOnly: true
+        # Runs the flannel daemon to enable vxlan networking between
+        # container hosts.
+        - name: flannel
+          image: "{{ flannel_image_repo }}:{{ flannel_image_tag }}"
+          command: [ "/opt/bin/flanneld", "--ip-masq", "--kube-subnet-mgr"]
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          env:
+            # The location of the etcd cluster.
+            - name: FLANNELD_ETCD_ENDPOINTS
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: etcd_endpoints
+            # Location of the CA certificate for etcd.
+            - name: ETCD_CA_CERT_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: etcd_ca
+            # Location of the client key for etcd.
+            - name: ETCD_KEY_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: etcd_key
+            # Location of the client certificate for etcd.
+            - name: ETCD_CERT_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: etcd_cert
+            # Location of the CA certificate for etcd.
+            - name: FLANNELD_ETCD_CAFILE
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: etcd_ca
+            # Location of the client key for etcd.
+            - name: FLANNELD_ETCD_KEYFILE
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: etcd_key
+            # Location of the client certificate for etcd.
+            - name: FLANNELD_ETCD_CERTFILE
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: etcd_cert
+            # The interface flannel should run on.
+            - name: FLANNELD_IFACE
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: canal_iface
+            # Perform masquerade on traffic leaving the pod cidr.
+            - name: FLANNELD_IP_MASQ
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: masquerade
+            # Write the subnet.env file to the mounted directory.
+            - name: FLANNELD_SUBNET_FILE
+              value: "/run/flannel/subnet.env"
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - mountPath: /etc/resolv.conf
+              name: resolv
+            - mountPath: /run/flannel
+              name: run-flannel
+            - mountPath: /calico-secrets
+              name: etcd-certs
+            - name: flannel-cfg
+              mountPath: /etc/kube-flannel/
+      volumes:
+        - name: flannel-cfg
+          configMap:
+            name: canal-config
+        # Used by canal-node.
+        - name: lib-modules
+          hostPath:
+            path: /lib/modules
+        - name: var-run-calico
+          hostPath:
+            path: /var/run/calico
+        - name: var-lib-calico
+          hostPath:
+            path: /var/lib/calico
+        - name: xtables-lock
+          hostPath:
+            path: /run/xtables.lock
+            type: FileOrCreate
+        - name: sys-fs
+          hostPath:
+            path: /sys/fs/
+            type: DirectoryOrCreate
+        - name: bpffs
+          hostPath:
+            path: /sys/fs/bpf
+            type: Directory
+        # mount /proc at /nodeproc to be used by mount-bpffs initContainer to mount root cgroup2 fs.
+        - name: nodeproc
+          hostPath:
+            path: /proc
+        # Used by flannel.
+        - name: run-flannel
+          hostPath:
+            path: /run/flannel
+        - name: resolv
+          hostPath:
+            path: /etc/resolv.conf
+        # Used to install CNI.
+        - name: cni-bin-dir
+          hostPath:
+            path: /opt/cni/bin
+        - name: cni-net-dir
+          hostPath:
+            path: /etc/cni/net.d
+        # Used to access CNI logs.
+        - name: cni-log-dir
+          hostPath:
+            path: /var/log/calico/cni
+        # Mount in the etcd TLS secrets with mode 400.
+        # See https://kubernetes.io/docs/concepts/configuration/secret/
+        - name: etcd-certs
+          secret:
+            secretName: calico-etcd-secrets
+            defaultMode: 0400
+        # Used to create per-pod Unix Domain Sockets
+        - name: policysync
+          hostPath:
+            type: DirectoryOrCreate
+            path: /var/run/nodeagent
