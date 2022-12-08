@@ -60,4 +60,209 @@ spec:
                   fieldPath: spec.serviceAccountName
             # Name of the CNI config file to create.
             - name: CNI_CONF_NAME
-              value: "10-canal
+              value: "10-canal.conflist"
+            # The CNI network config to install on each node.
+            - name: CNI_NETWORK_CONFIG
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: cni_network_config
+            # Set the hostname based on the k8s node name.
+            - name: KUBERNETES_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            # The location of the etcd cluster.
+            - name: ETCD_ENDPOINTS
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: etcd_endpoints
+            # Location of the CA certificate for etcd.
+            - name: ETCD_CA_CERT_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: etcd_ca
+            # Location of the client key for etcd.
+            - name: ETCD_KEY_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: etcd_key
+            # Location of the client certificate for etcd.
+            - name: ETCD_CERT_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: etcd_cert
+            # CNI MTU Config variable
+            - name: CNI_MTU
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: veth_mtu
+            # Prevents the container from sleeping forever.
+            - name: SLEEP
+              value: "false"
+          volumeMounts:
+            - mountPath: /host/opt/cni/bin
+              name: cni-bin-dir
+            - mountPath: /host/etc/cni/net.d
+              name: cni-net-dir
+            - mountPath: /calico-secrets
+              name: etcd-certs
+          securityContext:
+            privileged: true
+        # This init container mounts the necessary filesystems needed by the BPF data plane
+        # i.e. bpf at /sys/fs/bpf and cgroup2 at /run/calico/cgroup. Calico-node initialisation is executed
+        # in best effort fashion, i.e. no failure for errors, to not disrupt pod creation in iptable mode.
+        - name: "mount-bpffs"
+          image: "{{ calico_node_image_repo }}:{{ calico_node_image_tag }}"
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          command: ["calico-node", "-init", "-best-effort"]
+          volumeMounts:
+            - mountPath: /sys/fs
+              name: sys-fs
+              # Bidirectional is required to ensure that the new mount we make at /sys/fs/bpf propagates to the host
+              # so that it outlives the init container.
+              mountPropagation: Bidirectional
+            - mountPath: /var/run/calico
+              name: var-run-calico
+              # Bidirectional is required to ensure that the new mount we make at /run/calico/cgroup propagates to the host
+              # so that it outlives the init container.
+              mountPropagation: Bidirectional
+            # Mount /proc/ from host which usually is an init program at /nodeproc. It's needed by mountns binary,
+            # executed by calico-node, to mount root cgroup2 fs at /run/calico/cgroup to attach CTLB programs correctly.
+            - mountPath: /nodeproc
+              name: nodeproc
+              readOnly: true
+          securityContext:
+            privileged: true
+      containers:
+        # Runs canal container on each Kubernetes node. This
+        # container programs network policy and routes on each
+        # host.
+        - name: calico-node
+          image: "{{ calico_node_image_repo }}:{{ calico_node_image_tag }}"
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          envFrom:
+          - configMapRef:
+              # Allow KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT to be overridden for eBPF mode.
+              name: kubernetes-services-endpoint
+              optional: true
+          env:
+            # The location of the etcd cluster.
+            - name: ETCD_ENDPOINTS
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: etcd_endpoints
+            # Location of the CA certificate for etcd.
+            - name: ETCD_CA_CERT_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: etcd_ca
+            # Location of the client key for etcd.
+            - name: ETCD_KEY_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: etcd_key
+            # Location of the client certificate for etcd.
+            - name: ETCD_CERT_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: etcd_cert
+            # Set noderef for node controller.
+            - name: CALICO_K8S_NODE_REF
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            # Set the serviceaccount name to use for the Calico CNI plugin.
+            # We use canal-node instead of calico-node when using flannel networking.
+            - name: CALICO_CNI_SERVICE_ACCOUNT
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.serviceAccountName
+            # Don't enable BGP.
+            - name: CALICO_NETWORKING_BACKEND
+              value: "none"
+            # Cluster type to identify the deployment type
+            - name: CLUSTER_TYPE
+              value: "k8s,canal"
+            # Period, in seconds, at which felix re-applies all iptables state
+            - name: FELIX_IPTABLESREFRESHINTERVAL
+              value: "60"
+            # No IP address needed.
+            - name: IP
+              value: ""
+            # The default IPv4 pool to create on startup if none exists. Pod IPs will be
+            # chosen from this range. Changing this value after installation will have
+            # no effect. This should fall within `--cluster-cidr`.
+            # - name: CALICO_IPV4POOL_CIDR
+            #   value: "192.168.0.0/16"
+            # Disable file logging so `kubectl logs` works.
+            - name: CALICO_DISABLE_FILE_LOGGING
+              value: "true"
+            # Set Felix endpoint to host default action to ACCEPT.
+            - name: FELIX_DEFAULTENDPOINTTOHOSTACTION
+              value: "ACCEPT"
+            # Disable IPv6 on Kubernetes.
+            - name: FELIX_IPV6SUPPORT
+              value: "false"
+            - name: FELIX_HEALTHENABLED
+              value: "true"
+          securityContext:
+            privileged: true
+          resources:
+            limits:
+              cpu: {{ calico_node_cpu_limit }}
+              memory: {{ calico_node_memory_limit }}
+            requests:
+              cpu: {{ calico_node_cpu_requests }}
+              memory: {{ calico_node_memory_requests }}
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                - /bin/calico-node
+                - -shutdown
+          livenessProbe:
+            exec:
+              command:
+              - /bin/calico-node
+              - -felix-live
+            periodSeconds: 10
+            initialDelaySeconds: 10
+            failureThreshold: 6
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /readiness
+              port: 9099
+              host: localhost
+            periodSeconds: 10
+            timeoutSeconds: 10
+          volumeMounts:
+            # For maintaining CNI plugin API credentials.
+            - mountPath: /host/etc/cni/net.d
+              name: cni-net-dir
+              readOnly: false
+            - mountPath: /lib/modules
+              name: lib-modules
+              readOnly: true
+            - mountPath: /run/xtables.lock
+              name: xtables-lock
+              readOnly: false
+            - mountPath: /var/run/calico
+              name: var-run-calico
+              readOnly: false
+            - mountPath: /var/lib/calico
+              name: var-lib-calico
+              readOnly: false
+            - mountPath: /calico-secrets
+              name: etcd-certs
+            - name: policysync
