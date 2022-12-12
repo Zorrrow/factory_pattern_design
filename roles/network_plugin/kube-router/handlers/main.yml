@@ -1,0 +1,5 @@
+---
+- name: reset_kube_router
+  command: /bin/true
+  notify:
+    - Kube-router | delete kube-route
