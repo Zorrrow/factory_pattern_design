@@ -1,0 +1,22 @@
+---
+- name: remove-node | List nodes
+  command: >-
+    {{ kubectl }} get nodes -o go-template={% raw %}'{{ range .items }}{{ .metadata.name }}{{ "\n" }}{{ end }}'{% endraw %}
+  register: nodes
+  when:
+    - groups['kube_control_plane'] | length > 0
+  delegate_to: "{{ groups['kube_control_plane']|first }}"
+  changed_when: false
+  run_once: true
+
+- name: remove-node | Drain node except daemonsets resource  # noqa 301
+  command: >-
+    {{ kubectl }} drain
+      --force
+      --ignore-daemonsets
+      --grace-period {{ drain_grace_period }}
+      --timeout {{ drain_timeout }}
+      --delete-emptydir-data {{ kube_override_hostname|default(inventory_hostname) }}
+  when:
+    - groups['kube_control_plane'] | length > 0
+    # ignore servers that are not nodes

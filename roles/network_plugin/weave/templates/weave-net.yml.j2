@@ -260,4 +260,38 @@ items:
           volumes:
             - name: weavedb
               hostPath:
-                path: /v
+                path: /var/lib/weave
+            - name: cni-bin
+              hostPath:
+                path: /opt
+            - name: cni-bin2
+              hostPath:
+                path: /home
+            - name: cni-conf
+              hostPath:
+                path: /etc
+            - name: cni-machine-id
+              hostPath:
+                path: /etc/machine-id
+            - name: dbus
+              hostPath:
+                path: /var/lib/dbus
+            - name: lib-modules
+              hostPath:
+                path: /lib/modules
+            - name: xtables-lock
+              hostPath:
+                path: /run/xtables.lock
+                type: FileOrCreate
+          priorityClassName: system-node-critical
+      updateStrategy:
+        rollingUpdate:
+          maxUnavailable: {{ serial | default('20%') }}
+        type: RollingUpdate
+  - apiVersion: v1
+    kind: Secret
+    metadata:
+      name: weave-net
+      namespace: kube-system
+    data:
+      WEAVE_PASSWORD: "{{ weave_password | default("") | b64encode }}"
