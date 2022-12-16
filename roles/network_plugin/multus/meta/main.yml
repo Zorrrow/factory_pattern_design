@@ -1,0 +1,4 @@
+
+---
+dependencies:
+  - role: network_plugin/cni
