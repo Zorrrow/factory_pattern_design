@@ -284,4 +284,165 @@
     label: "{{ filedir_path }}"
   vars:
     filedir_path: "{{ file_dir_line.split(' ')[0] }}"
-  when: var_lib_kubelet_directory.
+  when: var_lib_kubelet_directory.stat.exists
+
+- name: reset | delete some files and directories
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - "{{ kube_config_dir }}"
+    - /var/lib/kubelet
+    - "{{ containerd_storage_dir }}"
+    - "{{ ansible_env.HOME | default('/root') }}/.kube"
+    - "{{ ansible_env.HOME | default('/root') }}/.helm"
+    - "{{ ansible_env.HOME | default('/root') }}/.config/helm"
+    - "{{ ansible_env.HOME | default('/root') }}/.cache/helm"
+    - "{{ ansible_env.HOME | default('/root') }}/.local/share/helm"
+    - "{{ etcd_data_dir }}"
+    - "{{ etcd_events_data_dir }}"
+    - "{{ etcd_config_dir }}"
+    - /var/log/calico
+    - /var/log/openvswitch
+    - /var/log/ovn
+    - /var/log/kube-ovn
+    - /etc/cni
+    - /etc/nerdctl
+    - "{{ nginx_config_dir }}"
+    - /etc/dnsmasq.d
+    - /etc/dnsmasq.conf
+    - /etc/dnsmasq.d-available
+    - /etc/etcd.env
+    - /etc/calico
+    - /etc/NetworkManager/conf.d/calico.conf
+    - /etc/NetworkManager/conf.d/k8s.conf
+    - /etc/weave.env
+    - /opt/cni
+    - /etc/dhcp/dhclient.d/zdnsupdate.sh
+    - /etc/dhcp/dhclient-exit-hooks.d/zdnsupdate
+    - /run/flannel
+    - /etc/flannel
+    - /run/kubernetes
+    - /usr/local/share/ca-certificates/etcd-ca.crt
+    - /usr/local/share/ca-certificates/kube-ca.crt
+    - /etc/ssl/certs/etcd-ca.pem
+    - /etc/ssl/certs/kube-ca.pem
+    - /etc/pki/ca-trust/source/anchors/etcd-ca.crt
+    - /etc/pki/ca-trust/source/anchors/kube-ca.crt
+    - /var/log/pods/
+    - "{{ bin_dir }}/kubelet"
+    - "{{ bin_dir }}/cri-dockerd"
+    - "{{ bin_dir }}/etcd-scripts"
+    - "{{ bin_dir }}/etcd"
+    - "{{ bin_dir }}/etcd-events"
+    - "{{ bin_dir }}/etcdctl"
+    - "{{ bin_dir }}/etcdctl.sh"
+    - "{{ bin_dir }}/kubernetes-scripts"
+    - "{{ bin_dir }}/kubectl"
+    - "{{ bin_dir }}/kubeadm"
+    - "{{ bin_dir }}/helm"
+    - "{{ bin_dir }}/calicoctl"
+    - "{{ bin_dir }}/calicoctl.sh"
+    - "{{ bin_dir }}/calico-upgrade"
+    - "{{ bin_dir }}/weave"
+    - "{{ bin_dir }}/crictl"
+    - "{{ bin_dir }}/nerdctl"
+    - "{{ bin_dir }}/netctl"
+    - "{{ bin_dir }}/k8s-certs-renew.sh"
+    - /var/lib/cni
+    - /etc/openvswitch
+    - /run/openvswitch
+    - /var/lib/kube-router
+    - /var/lib/calico
+    - /etc/cilium
+    - /run/calico
+    - /etc/bash_completion.d/kubectl.sh
+    - /etc/bash_completion.d/crictl
+    - /etc/bash_completion.d/nerdctl
+    - /etc/bash_completion.d/krew
+    - /etc/bash_completion.d/krew.sh
+    - "{{ krew_root_dir }}"
+    - /etc/modules-load.d/kube_proxy-ipvs.conf
+    - /etc/modules-load.d/kubespray-br_netfilter.conf
+    - /etc/modules-load.d/kubespray-kata-containers.conf
+    - /usr/libexec/kubernetes
+    - /etc/origin/openvswitch
+    - /etc/origin/ovn
+    - "{{ sysctl_file_path }}"
+    - /etc/crictl.yaml
+  ignore_errors: true  # noqa ignore-errors
+  tags:
+    - files
+
+- name: reset | remove containerd binary files
+  file:
+    path: "{{ containerd_bin_dir }}/{{ item }}"
+    state: absent
+  with_items:
+    - containerd
+    - containerd-shim
+    - containerd-shim-runc-v1
+    - containerd-shim-runc-v2
+    - containerd-stress
+    - crictl
+    - critest
+    - ctd-decoder
+    - ctr
+    - runc
+  ignore_errors: true  # noqa ignore-errors
+  when: container_manager == 'containerd'
+  tags:
+    - files
+
+- name: reset | remove dns settings from dhclient.conf
+  blockinfile:
+    path: "{{ item }}"
+    state: absent
+    marker: "# Ansible entries {mark}"
+  failed_when: false
+  with_items:
+    - /etc/dhclient.conf
+    - /etc/dhcp/dhclient.conf
+  tags:
+    - files
+    - dns
+
+- name: reset | remove host entries from /etc/hosts
+  blockinfile:
+    path: "/etc/hosts"
+    state: absent
+    marker: "# Ansible inventory hosts {mark}"
+  tags:
+    - files
+    - dns
+
+- name: reset | include file with reset tasks specific to the network_plugin if exists
+  include_role:
+    name: "network_plugin/{{ kube_network_plugin }}"
+    tasks_from: reset
+  when:
+    - kube_network_plugin in ['flannel', 'cilium', 'kube-router', 'calico']
+  tags:
+    - network
+
+- name: reset | Restart network
+  service:
+    name: >-
+      {% if ansible_os_family == "RedHat" -%}
+      {%- if ansible_distribution_major_version|int >= 8 or is_fedora_coreos or ansible_distribution == "Fedora" -%}
+      NetworkManager
+      {%- else -%}
+      network
+      {%- endif -%}
+      {%- elif ansible_distribution == "Ubuntu" -%}
+      systemd-networkd
+      {%- elif ansible_os_family == "Debian" -%}
+      networking
+      {%- endif %}
+    state: restarted
+  when:
+    - ansible_os_family not in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
+    - reset_restart_network
+  tags:
+    - services
+    - network
