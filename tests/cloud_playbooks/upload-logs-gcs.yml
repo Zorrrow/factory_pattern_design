@@ -56,4 +56,25 @@
       failed_when: false
 
     - name: Apply the lifecycle rules  # noqa 301
-      command: "{{ dir }}/google-cloud-sdk/bin/gsutil lifecycle set {{ dir }}/gcs_life.json gs://{{ te
+      command: "{{ dir }}/google-cloud-sdk/bin/gsutil lifecycle set {{ dir }}/gcs_life.json gs://{{ test_name }}"
+      changed_when: false
+      environment:
+        BOTO_CONFIG: "{{ dir }}/.boto"
+      no_log: True
+
+    - name: Upload collected diagnostic info
+      gc_storage:
+        bucket: "{{ test_name }}"
+        mode: put
+        permission: public-read
+        object: "{{ file_name }}"
+        src: "{{ dir }}/logs.tar.gz"
+        headers: '{"Content-Encoding": "x-gzip"}'
+        gs_access_key: "{{ gs_key }}"
+        gs_secret_key: "{{ gs_skey }}"
+        expiration: "{{ expire_days * 36000|int }}"
+      failed_when: false
+      no_log: True
+
+    - debug:  # noqa unnamed-task
+        msg: "A public url https://storage.googleapis.com/{{ test_name }}/{{ file_name }}"
