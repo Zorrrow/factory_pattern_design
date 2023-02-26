@@ -46,4 +46,4 @@
 
   - debug:  # noqa unnamed-task
       msg: "{{ get_pods.stdout.split('\n') }}"
-    failed
+    failed_when: not run_pods_log is success
