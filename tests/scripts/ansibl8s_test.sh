@@ -42,4 +42,11 @@ should_api_server_respond() {
 should_pod_be_in_expected_subnet() {
   ansible-playbook -i inventory.ini -s ${private_key} testcases/030_check-network.yml -vv
 
-  assertion__stat
+  assertion__status_code_is_success $?
+}
+
+should_resolve_cluster_dns() {
+  ansible-playbook -i inventory.ini -s ${private_key} testcases/040_check-network-adv.yml -vv
+
+  assertion__status_code_is_success $?
+}
